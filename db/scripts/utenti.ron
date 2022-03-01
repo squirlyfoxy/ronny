@@ -1,0 +1,38 @@
+@type Utenti
+{
+	ID				key		AUTOINCREMENT
+	Nome			string
+	Cognome			string
+	Data_Nascita	date
+	Chiave_Utente	key		USERACCESSKEY
+	
+	@function (TakeTuttiMaggiorenni)
+	{
+		@var (Utenti) 
+		{
+			Nome
+			Cognome
+		} _usrs;
+	
+		loop on * as utente
+		{
+			if date.CalculateAge(utente.Data_Nascita) >= 18
+			{
+				_usrs.Add(utente);
+			}
+		}
+		
+		return _usrs;
+	}
+	
+	@rule
+	{
+		@on_type
+		{
+			CAN_TAKE
+			CAN_ADD
+			CAN_REMOVE
+			CAN_MODIFY
+		} Utenti;
+	} REFEERS TO Chiave_Utente;
+}
