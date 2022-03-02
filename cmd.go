@@ -87,9 +87,11 @@ func StartCMD(dt db.Database) {
 				fmt.Printf("|  %d           |  %s             |\n", i, t.Name)
 				i++
 			}
+
 			fmt.Println("--------------------------------------")
 			fmt.Println("")
 			fmt.Println("Use ID in this environment to access tables fastly.")
+
 		} else if strings.HasPrefix(input, "shtable") {
 			//Get the table ID (shtable [tableID]). convert it to an int. Remove \r at the end
 			rs := strings.Replace(input, "shtable ", "", -1)
@@ -138,6 +140,8 @@ func StartCMD(dt db.Database) {
 			}
 			fmt.Printf("%-15s\n", "--------------------------------------")
 			fmt.Println("")
+
+			fmt.Println("Functions: ", len(t.Functions))
 		} else if strings.HasPrefix(input, "wami") {
 			if dt.Name == "" {
 				fmt.Println("Your database has no name YeT.")

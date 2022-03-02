@@ -213,7 +213,11 @@ func Parse(lines []string) Table {
 		//Functions
 		//If the line starts with @function, create a new function (@function (NameOfTheFunction))
 		if strings.HasPrefix(lines[i], "@function") {
-			//table.Functions = append(table.Functions, ParseFunction(lines[i:]))
+			t, ig := ParseFunction(lines, i)
+			i = ig
+
+			table.Functions = append(table.Functions, t)
+
 			continue
 		}
 
