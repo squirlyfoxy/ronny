@@ -10,9 +10,10 @@ import (
 
 //Saved as json in './db/database.json'
 type Database struct {
-	Name    string   `json:"name"`
-	Scripts []string `json:"scripts"` //Scripts path
-	Tables  []Table
+	Name            string   `json:"name"`
+	Scripts         []string `json:"scripts"`           //Scripts path
+	DatasFilesPaths []string `json:"datas_files_paths"` //Paths of the files containing the data (will be stored as jsons)
+	Tables          []Table  `json:"tables"`            //Tables
 }
 
 func (d *Database) ReadScript(path string) {
@@ -45,6 +46,45 @@ func (d *Database) ReadScript(path string) {
 
 	//Parse the lines
 	d.Tables = append(d.Tables, Parse(lines))
+
+	//Create the file that will contains the data (./db/data/[TableName].dat.json)
+	//Create the folder if it doesn't exist
+	if _, err := os.Stat("./db/data"); os.IsNotExist(err) {
+		os.Mkdir("./db/data", 0777)
+	}
+
+	//Create the file (check before if already exists, if so request user for permission to recreate)
+	if _, err := os.Stat("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json"); os.IsNotExist(err) {
+		file, err := os.Create("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		//Prepare the file with a basic structure
+		file.WriteString("{\"columns\":[],\"data\":[]}")
+
+		file.Close()
+	} else {
+	redo:
+		fmt.Printf("Do you want to recreate the data stored in Ronny for this table? No can be dangerous if you have changed the data structure (y/n) -> ")
+		var answer string
+
+		fmt.Scanln(&answer)
+
+		if answer == "y" {
+			file, err := os.Create("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			//Prepare the file with a basic structure
+			file.WriteString("{\"columns\":[],\"data\":[]}")
+
+			file.Close()
+		} else if answer != "n" {
+			goto redo
+		}
+	}
 
 	//Save the database
 	d.Save()

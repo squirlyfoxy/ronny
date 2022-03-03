@@ -169,7 +169,13 @@ func StartCMD(dt db.Database) {
 		} else if strings.HasPrefix(input, "serve") {
 			//TODO: Start the API web server
 		} else {
-			fmt.Println("No commands with this path")
+			//If nothing, continue
+			if input == "" || input == "\r" {
+				continue
+			}
+
+			//Print red: Uknown command
+			fmt.Print("\033[31mUnknown command\033[0m\n")
 		}
 	}
 }

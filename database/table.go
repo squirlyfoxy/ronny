@@ -46,26 +46,31 @@ const (
 )
 
 type RuleType struct {
-	Can       []OnType
-	TableName string
+	Can       []OnType `json:"can"`
+	TableName string   `json:"tableName"`
 }
 
 type Rule struct {
 	//Name of the column
-	RefeersTo string
-	RuleTypes []RuleType
+	RefeersTo string     `json:"refersTo"`
+	RuleTypes []RuleType `json:"ruleTypes"`
 }
 
 type Column struct {
-	Name string
-	Type ColumnType
-	Rule ColumnRule
+	Name string     `json:"name"`
+	Type ColumnType `json:"type"`
+	Rule ColumnRule `json:"rule"`
+}
+
+type TableData struct {
+	Columns []string   `json:"columns"` //Will store the name of the columns
+	Data    [][]string `json:"data"`    //Will store the data
 }
 
 type Table struct {
-	Name      string
-	SubTables []Table
-	Columns   []Column
-	Functions []Function
-	Rule      Rule
+	Name      string     `json:"name"`
+	SubTables []Table    `json:"subTables"`
+	Columns   []Column   `json:"columns"`
+	Functions []Function `json:"functions"`
+	Rule      Rule       `json:"rule"`
 }

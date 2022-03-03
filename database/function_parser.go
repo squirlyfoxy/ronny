@@ -30,13 +30,6 @@ func ParseFunction(lines []string, current_line int) (Function, int) {
 
 	var variables []string
 	var func_name string
-	start_line := current_line
-
-r:
-	if strings.HasPrefix(lines[current_line], "\t") {
-		lines[current_line] = lines[current_line][1:]
-		goto r
-	}
 
 	//Get the function name
 	if strings.HasPrefix(lines[current_line], "@function") {
@@ -46,12 +39,6 @@ r:
 		func_name = strings.TrimSuffix(func_name, ")")
 		current_line++
 
-	rs:
-		if strings.HasPrefix(lines[current_line], "\t") {
-			lines[current_line] = lines[current_line][1:]
-			goto rs
-		}
-
 		if strings.HasPrefix(lines[current_line], "{") {
 			current_line++
 		} else {
@@ -60,17 +47,17 @@ r:
 		}
 	}
 
-	for ; current_line < len(lines); current_line++ {
-	redo:
-		if strings.HasPrefix(lines[current_line], "\t") {
-			lines[current_line] = lines[current_line][1:]
-			goto redo
-		}
+	//Start the function body
+	start_line := current_line
 
+	for ; current_line < len(lines); current_line++ {
 		//The goal is to find the end of the function
+		//The following function check also that the function is written currectly
 		if lines[current_line] == "" || strings.HasPrefix(lines[current_line], "//") || len(lines[current_line]) == 0 {
 			continue
 		}
+
+		//TODO: PARAMETERS
 
 		//If var, check if is declared as specified top
 		if strings.HasPrefix(lines[current_line], "@var") {
@@ -122,14 +109,6 @@ r:
 					if strings.HasPrefix(spl[1], "(") && strings.HasSuffix(spl[1], ")") {
 						//Check if the type is specified
 						if spl[1][1:len(spl[1])-1] != "" {
-							//Check if the name is specified
-							if spl[1] != "" {
-								//Add the variable to the list
-								variables = append(variables, spl[1])
-								continue
-							} else {
-								fmt.Println("Name for @var nor specified")
-							}
 						} else {
 							fmt.Println("Type for @var nor specified")
 						}
@@ -139,7 +118,35 @@ r:
 
 					//Check if in the following lines there is a { and }
 					for ; current_line < len(lines); current_line++ {
-						if strings.HasPrefix(lines[current_line], "{") && strings.HasSuffix(lines[current_line], "}") {
+						if strings.HasPrefix(lines[current_line], "}") {
+							//Split the line by spaces
+							spl := strings.Split(lines[current_line], " ")
+
+							if len(spl) == 2 {
+								//Check if the name is specified
+								if spl[1] != "" {
+									//Check if end with ";", if so, add the variable to the list
+									if !strings.HasSuffix(lines[current_line], ";") {
+										fmt.Println("Line should end with ;")
+										break
+									}
+
+									//Remove ";"
+									spl[1] = strings.TrimSuffix(spl[1], ";")
+
+									//Check if the variable already exists
+									if Contains(variables, spl[1]) {
+										fmt.Println("Variable " + spl[1] + " already exists")
+										break
+									}
+
+									//Add the variable to the list
+									variables = append(variables, spl[1])
+								} else {
+									fmt.Println("Name for @var nor specified")
+								}
+							}
+
 							break
 						}
 					}
@@ -169,20 +176,11 @@ r:
 					//Check if the row is specified
 					if spl[4] != "" {
 						//Check if the following lines there is a { (current_line+1) and } (end)
-					rts:
-						if strings.HasPrefix(lines[current_line+1], "\t") {
-							lines[current_line+1] = lines[current_line+1][1:]
-							goto rts
-						}
 
 						if strings.HasPrefix(lines[current_line+1], "{") {
 							current_line++
 							for ; current_line < len(lines); current_line++ {
-							rtrs:
-								if strings.HasPrefix(lines[current_line], "\t") {
-									lines[current_line] = lines[current_line][1:]
-									goto rtrs
-								}
+
 								if strings.HasPrefix(lines[current_line], "}") {
 									break
 								}
@@ -225,12 +223,6 @@ r:
 					if strings.HasPrefix(lines[current_line+1], "{") {
 						current_line++
 						for ; current_line < len(lines); current_line++ {
-						rtvs:
-							if strings.HasPrefix(lines[current_line], "\t") {
-								lines[current_line] = lines[current_line][1:]
-								goto rtvs
-							}
-
 							if strings.HasPrefix(lines[current_line], "}") {
 								break
 							}
@@ -253,11 +245,11 @@ r:
 		}
 
 		//Check if the function has a return statement
-		if strings.HasPrefix(lines[len(lines)-1], "return") {
+		if strings.HasPrefix(lines[current_line], "return") {
 			//return ends with the name of the variable returned and ;
 			//Split the line by spaces
-			spl := strings.FieldsFunc(lines[len(lines)-1], func(r rune) bool {
-				return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r == '_' || r == '(' || r == ')')
+			spl := strings.FieldsFunc(lines[current_line], func(r rune) bool {
+				return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r == '_' || r == '(' || r == ')' || r == ';')
 			})
 
 			if len(spl) == 2 {
@@ -270,6 +262,7 @@ r:
 						if Contains(variables, spl[1]) {
 							//Check if in the following lines there is a }
 							if strings.HasPrefix(lines[current_line+1], "}") {
+								current_line += 2
 								break
 							} else {
 								fmt.Println("Function not ends with }")
@@ -290,5 +283,6 @@ r:
 	return Function{
 		Name:      func_name,
 		StartLine: start_line,
+		EndLine:   current_line,
 	}, current_line
 }

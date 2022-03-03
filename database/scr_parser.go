@@ -41,7 +41,8 @@ func GetColumnType(spl []string) ColumnType {
 	//TODO: TYPES FROM OTHER TYPES
 
 	//Not found
-	panic("Column type not found")
+	fmt.Println("Type not found")
+	return DEFAULT
 }
 
 func GetColumnRule(spl []string) ColumnRule {
@@ -78,7 +79,8 @@ func GetColumnRule(spl []string) ColumnRule {
 	}
 
 	//Not found
-	panic("Column rule not found")
+	fmt.Println("Rule not found")
+	return DEFAULT
 }
 
 func ParseColumns(lines []string, start int) ([]Column, int) {
@@ -88,7 +90,7 @@ func ParseColumns(lines []string, start int) ([]Column, int) {
 	//[columnName] [columnType]	[columnRule]
 
 	var cols []Column
-	var i int
+	var i = start
 	for ; i < len(lines); i++ {
 		//If the line is empty, skip it
 		if lines[i] == "" || strings.HasPrefix(lines[i], "//") || len(lines[i]) == 0 {
@@ -128,7 +130,7 @@ func ParseColumns(lines []string, start int) ([]Column, int) {
 		cols = append(cols, col)
 	}
 
-	return cols, (i + start)
+	return cols, (i - 1)
 }
 
 func Parse(lines []string) Table {
@@ -157,16 +159,11 @@ func Parse(lines []string) Table {
 	//Loop through the lines
 	columns_creation_process_finished := false
 
+	//Remove tabs
+	lines = RemoveTabsFromLines(lines)
 	for i := 0; i < len(lines); i++ {
-		//Remove the first "TAB" if it exists
-	redo:
-		if strings.HasPrefix(lines[i], "\t") {
-			lines[i] = lines[i][1:]
-			goto redo
-		}
-
 		//If line starts with "//" is a comment
-		if strings.HasPrefix(lines[i], "//") {
+		if strings.HasPrefix(lines[i], "//") || lines[i] == "" {
 			continue
 		}
 
@@ -204,7 +201,7 @@ func Parse(lines []string) Table {
 			}
 
 			//Call a method that will parse all the columns
-			table.Columns, i = ParseColumns(lines[i:], i)
+			table.Columns, i = ParseColumns(lines, i)
 			columns_creation_process_finished = true
 
 			continue
@@ -213,8 +210,8 @@ func Parse(lines []string) Table {
 		//Functions
 		//If the line starts with @function, create a new function (@function (NameOfTheFunction))
 		if strings.HasPrefix(lines[i], "@function") {
-			t, ig := ParseFunction(lines, i)
-			i = ig
+			var t Function
+			t, i = ParseFunction(lines, i)
 
 			table.Functions = append(table.Functions, t)
 
