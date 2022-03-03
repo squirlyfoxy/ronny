@@ -62,6 +62,14 @@ func (d *Database) ReadScript(path string) {
 	}
 	defer file.Close()
 
+	//Get the hash of the script
+	hash, err := md5sum(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	AddHashToDB(hash, path)
+
 	var lines []string
 
 	scanner := bufio.NewScanner(file)
@@ -120,6 +128,47 @@ func ReadDatabase() (Database, error) {
 		return database, err
 	}
 	err = json.Unmarshal(file, &database)
+
+	//Check if scripts are in the database
+	for _, scr := range database.Scripts {
+		if _, err := os.Stat(scr); os.IsNotExist(err) {
+			//Print error in red: Script [path] not found, remove it from the database will erase the data. (y/n)
+		redo:
+			fmt.Printf("\033[31mScript [%s] not found, remove it from the database will erase the data. (y/n) -> \033[0m", scr)
+			var answer string
+
+			fmt.Scanln(&answer)
+
+			if answer == "y" {
+				//Remove the script from the database
+				database.Scripts = Remove(database.Scripts, scr)
+
+				//Remove the data file
+				database.DatasFilesPaths = Remove(database.DatasFilesPaths, "./db/data/"+database.Tables[len(database.Tables)-1].Name+".dat.json")
+				err := os.Remove("./db/data/" + database.Tables[len(database.Tables)-1].Name + ".dat.json")
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				//Print in green: Script [path] removed
+				fmt.Println("")
+				fmt.Printf("\033[32mScript [%s] removed\033[0m\n", scr)
+			} else if err != nil {
+				goto redo
+			}
+		}
+	}
+
+	//Check if data files are in the database
+	for _, data := range database.DatasFilesPaths {
+		if _, err := os.Stat(data); os.IsNotExist(err) {
+			//Print error in red: Data file [path] not found.
+			fmt.Printf("\033[31mData file [%s] not found.\033[0m\n", data)
+
+			//Remove the data file
+			database.DatasFilesPaths = Remove(database.DatasFilesPaths, data)
+		}
+	}
 
 	return database, nil
 }
