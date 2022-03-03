@@ -63,7 +63,7 @@ type Column struct {
 }
 
 type TableData struct {
-	Columns []string   `json:"columns"` //Will store the name of the columns
+	Columns []Column   `json:"columns"` //Will store the name of the columns
 	Data    [][]string `json:"data"`    //Will store the data
 }
 

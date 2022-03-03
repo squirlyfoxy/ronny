@@ -16,6 +16,32 @@ type Database struct {
 	Tables          []Table  `json:"tables"`            //Tables
 }
 
+func CreateTFile(path string) {
+	file, err := os.Create(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	file.Close()
+}
+
+func InitTFile(path string, t Table) {
+	var t_data TableData
+	t_data.Columns = t.Columns
+	t_data.Data = [][]string{}
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0777)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer file.Close()
+
+	//Write the data
+	json.NewEncoder(file).Encode(t_data)
+}
+
 func (d *Database) ReadScript(path string) {
 	//If this file is already in the database, skip it
 	for _, scr := range d.Scripts {
@@ -44,8 +70,10 @@ func (d *Database) ReadScript(path string) {
 		lines = append(lines, scanner.Text())
 	}
 
+	table := Parse(lines)
+
 	//Parse the lines
-	d.Tables = append(d.Tables, Parse(lines))
+	d.Tables = append(d.Tables, table)
 
 	//Create the file that will contains the data (./db/data/[TableName].dat.json)
 	//Create the folder if it doesn't exist
@@ -55,15 +83,9 @@ func (d *Database) ReadScript(path string) {
 
 	//Create the file (check before if already exists, if so request user for permission to recreate)
 	if _, err := os.Stat("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json"); os.IsNotExist(err) {
-		file, err := os.Create("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		//Prepare the file with a basic structure
-		file.WriteString("{\"columns\":[],\"data\":[]}")
+		CreateTFile("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
 
-		file.Close()
+		InitTFile("./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json", table)
 	} else {
 	redo:
 		fmt.Printf("Do you want to recreate the data stored in Ronny for this table? No can be dangerous if you have changed the data structure (y/n) -> ")
@@ -72,19 +94,15 @@ func (d *Database) ReadScript(path string) {
 		fmt.Scanln(&answer)
 
 		if answer == "y" {
-			file, err := os.Create("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			//Prepare the file with a basic structure
-			file.WriteString("{\"columns\":[],\"data\":[]}")
+			CreateTFile("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
 
-			file.Close()
+			InitTFile("./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json", table)
 		} else if answer != "n" {
 			goto redo
 		}
 	}
+
+	d.DatasFilesPaths = append(d.DatasFilesPaths, "./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json")
 
 	//Save the database
 	d.Save()
