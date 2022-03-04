@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bufio"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -84,4 +85,25 @@ func AddHashToDB(hash string, path string) {
 	//Close the file
 	file.Close()
 
+}
+
+func HashAlreadyContained(hash string) bool {
+	//Open the file
+	file, err := os.OpenFile("./db/SCRIPTS_HASH", os.O_RDONLY, 0600)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	//Read the file
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, hash) {
+			return true
+		}
+	}
+
+	return false
 }

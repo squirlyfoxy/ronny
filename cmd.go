@@ -69,6 +69,9 @@ func StartCMD(dt db.Database) {
 
 			fmt.Println()
 
+			//Save the database
+			dt.Save()
+
 			//Write "Database reloaded!" in green
 			fmt.Print("\033[32mDatabase reloaded!\033[0m\n")
 		} else if strings.HasPrefix(input, "tlist") {

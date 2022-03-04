@@ -69,6 +69,10 @@ func (d *Database) ReadScript(path string) {
 		fmt.Println(err)
 		return
 	}
+	if HashAlreadyContained(hash) {
+		return
+	}
+
 	AddHashToDB(hash, path)
 
 	var lines []string
@@ -112,9 +116,6 @@ func (d *Database) ReadScript(path string) {
 	}
 
 	d.DatasFilesPaths = append(d.DatasFilesPaths, "./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json")
-
-	//Save the database
-	d.Save()
 }
 
 func ReadDatabase() (Database, error) {
@@ -168,6 +169,15 @@ func ReadDatabase() (Database, error) {
 
 			//Remove the data file
 			database.DatasFilesPaths = Remove(database.DatasFilesPaths, data)
+		}
+	}
+
+	//If data file in the database repeats, remove the repeated ones
+	for i := 0; i < len(database.DatasFilesPaths); i++ {
+		for j := i + 1; j < len(database.DatasFilesPaths); j++ {
+			if database.DatasFilesPaths[i] == database.DatasFilesPaths[j] {
+				database.DatasFilesPaths = Remove(database.DatasFilesPaths, database.DatasFilesPaths[j])
+			}
 		}
 	}
 
