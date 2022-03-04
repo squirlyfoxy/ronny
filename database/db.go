@@ -14,6 +14,7 @@ type Database struct {
 	Scripts         []string `json:"scripts"`           //Scripts path
 	DatasFilesPaths []string `json:"datas_files_paths"` //Paths of the files containing the data (will be stored as jsons)
 	Tables          []Table  `json:"tables"`            //Tables
+	Config          Config   `json:"-"`
 }
 
 func CreateTFile(path string) {
