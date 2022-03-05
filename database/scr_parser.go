@@ -221,7 +221,13 @@ func Parse(lines []string) Table {
 		//Rules
 		//If the line starts with @rule, create a new rule (@rule), the rule refeer to a table (REFEERS TO [NameOfTheTable] after "}")
 		if strings.HasPrefix(lines[i], "@rule") {
-			//table.Rules = append(table.Rules, ParseRule(lines[i:]))
+			var t Rule
+			r_types, refeers, new_i := ParseRule(lines, i)
+			t.RefeersTo = refeers
+			t.RuleTypes = r_types
+			i = new_i
+
+			table.Rule = t
 			continue
 		}
 	}

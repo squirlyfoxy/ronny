@@ -38,11 +38,12 @@ const (
 type OnType int
 
 const (
-	OType      OnType = 0
-	CAN_TAKE          = 0
-	CAN_ADD           = 1
-	CAN_REMOVE        = 2
-	CAN_MODIFY        = 3
+	OType             OnType = 0
+	CAN_GLOBALLY_TAKE        = 0
+	CAN_TAKE                 = 1
+	CAN_ADD                  = 2
+	CAN_REMOVE               = 3
+	CAN_MODIFY               = 4
 )
 
 type RuleType struct {

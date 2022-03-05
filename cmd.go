@@ -43,6 +43,7 @@ func StartCMD(dt db.Database) {
 			fmt.Println("'chme [newName]' - Change the name of the database")
 			fmt.Println("'tlist' - show all the tables")
 			fmt.Println("'shtable [tableID]' - show a table structure")
+			fmt.Println("'rash' - clean all scripts hashes")
 			fmt.Println("'save' - save the database")
 			fmt.Println("'serve' - start the API web server")
 			fmt.Println("'realod scripts' - reload the database resetting the data structures")
@@ -170,7 +171,17 @@ func StartCMD(dt db.Database) {
 
 			fmt.Println("Database saved!")
 		} else if strings.HasPrefix(input, "serve") {
-			//TODO: Start the API web server
+			//Start the API web server
+			go db.StartADS(&dt)
+		} else if strings.HasPrefix(input, "rash") {
+			//Clean "SCRIPTS_HASH" file
+			err := os.Remove("./db/SCRIPTS_HASH")
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			os.Create("./db/SCRIPTS_HASH")
+
 		} else {
 			//If nothing, continue
 			if input == "" || input == "\r" {

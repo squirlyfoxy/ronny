@@ -7,7 +7,7 @@ import (
 )
 
 func AddRoute(table Table, engine *gin.Engine) {
-	//Route starts with /api/vi/
+	//Route starts with /api/v1/
 	//Methods:
 	// - take
 	// - add
@@ -18,6 +18,9 @@ func AddRoute(table Table, engine *gin.Engine) {
 	//id (URL PARAMATER)=the id (take, remove or modify)
 	//data (BODY)=the data to be added, modified or removed
 
+	//In case of funtions:
+	// /api/v1/function/tableName/functionName
+
 	//TODO: Add routes for every table
 }
 
@@ -26,7 +29,7 @@ func StartADS(db *Database) {
 	r := gin.Default()
 
 	//Routes
-	r.GET("/", func(c *gin.Context) {
+	r.GET("/api/v1/", func(c *gin.Context) {
 		if db.Config.DoDefaultRoute == 1 {
 			c.JSON(200, gin.H{
 				"ronny_version": "1.0",

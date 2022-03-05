@@ -88,6 +88,11 @@ func (d *Database) ReadScript(path string) {
 	//Parse the lines
 	d.Tables = append(d.Tables, table)
 
+	//If "./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json" exists, skip it
+	if _, err := os.Stat("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json"); err == nil {
+		return
+	}
+
 	//Create the file that will contains the data (./db/data/[TableName].dat.json)
 	//Create the folder if it doesn't exist
 	if _, err := os.Stat("./db/data"); os.IsNotExist(err) {
@@ -99,22 +104,7 @@ func (d *Database) ReadScript(path string) {
 		CreateTFile("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
 
 		InitTFile("./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json", table)
-	} else {
-	redo:
-		fmt.Printf("Do you want to recreate the data stored in Ronny for this table? No can be dangerous if you have changed the data structure (y/n) -> ")
-		var answer string
-
-		fmt.Scanln(&answer)
-
-		if answer == "y" {
-			CreateTFile("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
-
-			InitTFile("./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json", table)
-		} else if answer != "n" {
-			goto redo
-		}
 	}
-
 	d.DatasFilesPaths = append(d.DatasFilesPaths, "./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json")
 }
 
