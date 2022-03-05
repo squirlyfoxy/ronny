@@ -2,31 +2,58 @@ package database
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func AddRoute(table Table, engine *gin.Engine) {
-	//Route starts with /api/v1/
-	//Methods:
-	// - take
-	// - add
-	// - remove
-	// - modify
+var database *Database
 
-	//How? POST, pass this:
-	//id (URL PARAMATER)=the id (take, remove or modify)
-	//data (BODY)=the data to be added, modified or removed
+func CanGloballyTakeRoute(c *gin.Context) {
+	///api/v1/take/[tableName]/where/[key]
+	//Get the table name
+	tableName := c.Param("tableName")
 
-	//In case of funtions:
-	// /api/v1/function/tableName/functionName
+	//Get the key
+	key := c.Param("key")
 
-	//TODO: Add routes for every table
+	key_int, err := strconv.Atoi(key)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "key is not a number",
+		})
+		return
+	}
+
+	//Get the table
+	for _, table := range database.Tables {
+		name_to_lower := strings.ToLower(table.Name)
+
+		if name_to_lower == tableName {
+			//Get the data
+			data := GetDataFromATable(*database, table, key_int)
+
+			//Return the data
+			c.JSON(200, gin.H{
+				"data": data,
+			})
+			return
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"message": "error",
+		"why":     "table not found",
+	})
 }
 
 func StartADS(db *Database) {
 	//Gin server
 	r := gin.Default()
+
+	database = db
 
 	//Routes
 	r.GET("/api/v1/", func(c *gin.Context) {
@@ -42,15 +69,8 @@ func StartADS(db *Database) {
 		}
 	})
 
-	for _, table := range db.Tables {
-		//For every table, get the rule.
-		//If the rule is empty, then the table is not accessible
-		if table.Rule.RefeersTo == "" {
-			continue
-		} else {
-			AddRoute(table, r)
-		}
-	}
+	//api/v1/take/[tableName]/where/[key]
+	r.GET("/api/v1/take/:tableName/where/:key", CanGloballyTakeRoute)
 
 	//Start server
 	r.Run(db.Config.Host + ":" + fmt.Sprintf("%d", db.Config.Port))
