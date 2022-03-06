@@ -6,15 +6,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	dijkstra "github.com/squirlyfoxy/ronny/database/dijkstra"
 )
 
 //Saved as json in './db/database.json'
 type Database struct {
-	Name            string   `json:"name"`
-	Scripts         []string `json:"scripts"`           //Scripts path
-	DatasFilesPaths []string `json:"datas_files_paths"` //Paths of the files containing the data (will be stored as jsons)
-	Tables          []Table  `json:"tables"`            //Tables
-	Config          Config   `json:"-"`
+	Name                    string          `json:"name"`
+	Scripts                 []string        `json:"scripts"`           //Scripts path
+	DatasFilesPaths         []string        `json:"datas_files_paths"` //Paths of the files containing the data (will be stored as jsons)
+	Tables                  []Table         `json:"tables"`            //Tables
+	Config                  Config          `json:"-"`
+	DijkstraRappresentation *dijkstra.Graph `json:"-"`
 }
 
 func CreateTFile(path string) {
@@ -43,14 +46,20 @@ func InitTFile(path string, t Table) {
 	json.NewEncoder(file).Encode(t_data)
 }
 
-func (d *Database) ReadScript(path string) {
-	//If this file is already in the database, skip it
-	for _, scr := range d.Scripts {
-		if scr == path {
-			return
+func (d *Database) UpdateDB() {
+	d.DijkstraRappresentation = dijkstra.NewGraph()
+
+	for _, table := range d.Tables {
+		//The script is parsed, now we need to update the DijkstraRappresentation (every node have weight of 1)
+		d.DijkstraRappresentation.AddEdge(table.Name, "-", 1) //- is the root node
+		//Subtables
+		for _, subtable := range table.SubTables {
+			d.DijkstraRappresentation.AddEdge(table.Name, subtable.Name, 1)
 		}
 	}
+}
 
+func (d *Database) ReadScript(path string) {
 	d.Scripts = append(d.Scripts, path)
 
 	fmt.Println("Reading script: " + path)
@@ -88,6 +97,9 @@ func (d *Database) ReadScript(path string) {
 	//Parse the lines
 	d.Tables = append(d.Tables, table)
 
+	//Update the DijkstraRappresentation
+	d.UpdateDB()
+
 	//If "./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json" exists, skip it
 	if _, err := os.Stat("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json"); err == nil {
 		return
@@ -104,8 +116,9 @@ func (d *Database) ReadScript(path string) {
 		CreateTFile("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json")
 
 		InitTFile("./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json", table)
+
+		d.DatasFilesPaths = append(d.DatasFilesPaths, "./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json")
 	}
-	d.DatasFilesPaths = append(d.DatasFilesPaths, "./db/data/"+d.Tables[len(d.Tables)-1].Name+".dat.json")
 }
 
 func ReadDatabase() (Database, error) {
@@ -162,19 +175,19 @@ func ReadDatabase() (Database, error) {
 		}
 	}
 
-	//If data file in the database repeats, remove the repeated ones
-	for i := 0; i < len(database.DatasFilesPaths); i++ {
-		for j := i + 1; j < len(database.DatasFilesPaths); j++ {
-			if database.DatasFilesPaths[i] == database.DatasFilesPaths[j] {
-				database.DatasFilesPaths = Remove(database.DatasFilesPaths, database.DatasFilesPaths[j])
-			}
-		}
-	}
+	database.UpdateDB()
 
 	return database, nil
 }
 
 func (d *Database) AddScript(scr string) {
+	//If this file is already in the database, skip it
+	for _, path := range d.Scripts {
+		if path == scr {
+			return
+		}
+	}
+
 	d.ReadScript(scr)
 
 	d.Scripts = append(d.Scripts, scr)

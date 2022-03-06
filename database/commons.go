@@ -20,6 +20,19 @@ func Contains(s []string, e string) bool {
 	return false
 }
 
+func ContainsORtype(s []OnType, e int) bool {
+	for _, a := range s {
+		//a to int
+		it := int(a)
+
+		//Check if it contains the int
+		if it == e {
+			return true
+		}
+	}
+	return false
+}
+
 func Remove(s []string, scr string) []string {
 	for i, a := range s {
 		if a == scr {

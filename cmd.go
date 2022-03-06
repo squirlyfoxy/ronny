@@ -172,7 +172,7 @@ func StartCMD(dt db.Database) {
 			fmt.Println("Database saved!")
 		} else if strings.HasPrefix(input, "serve") {
 			//Start the API web server
-			go db.StartADS(&dt)
+			db.StartADS(&dt)
 		} else if strings.HasPrefix(input, "rash") {
 			//Clean "SCRIPTS_HASH" file
 			err := os.Remove("./db/SCRIPTS_HASH")
@@ -180,8 +180,11 @@ func StartCMD(dt db.Database) {
 				fmt.Println(err)
 			}
 
-			os.Create("./db/SCRIPTS_HASH")
-
+			file, err := os.Create("./db/SCRIPTS_HASH")
+			if err != nil {
+				fmt.Println(err)
+			}
+			file.Close()
 		} else {
 			//If nothing, continue
 			if input == "" || input == "\r" {

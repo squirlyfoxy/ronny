@@ -12,6 +12,9 @@ import (
 var database *Database
 
 func CanGloballyTakeRoute(c *gin.Context) {
+	//Set json
+	c.Header("Content-Type", "application/json")
+
 	///api/v1/take/[tableName]/where/[key]
 	//Get the table name
 	tableName := c.Param("tableName")
@@ -49,6 +52,21 @@ func CanGloballyTakeRoute(c *gin.Context) {
 	})
 }
 
+func CanTakeRoute(c *gin.Context) {
+	//Set json
+	c.Header("Content-Type", "application/json")
+
+	///api/v1/take/[tableName]/from/[startTable]/where/[key]
+	//Get the table name
+	//tableName := c.Param("tableName")
+
+	//Get the start table
+	//startTable := c.Param("startTable")
+
+	//Get the key
+	//key := c.Param("key")
+}
+
 func StartADS(db *Database) {
 	//Gin server
 	r := gin.Default()
@@ -71,6 +89,8 @@ func StartADS(db *Database) {
 
 	//api/v1/take/[tableName]/where/[key]
 	r.GET("/api/v1/take/:tableName/where/:key", CanGloballyTakeRoute)
+	///api/v1/take/[tableName]/from/[startTable]/where/[key]
+	r.POST("/api/v1/take/:tableName/from/:startTable/where/:key", CanTakeRoute)
 
 	//Start server
 	r.Run(db.Config.Host + ":" + fmt.Sprintf("%d", db.Config.Port))
