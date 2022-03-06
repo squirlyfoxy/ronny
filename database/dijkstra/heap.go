@@ -1,3 +1,5 @@
+//From: https://dev.to/douglasmakey/implementation-of-dijkstra-using-heap-in-go-6e3
+
 package dijkstra
 
 import "container/heap"
