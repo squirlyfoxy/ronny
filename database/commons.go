@@ -47,10 +47,16 @@ func Remove(s []string, scr string) []string {
 func RemoveTabsFromLines(lines []string) []string {
 	//Remove the first group of tabs (before the real characters)
 	for i := 0; i < len(lines); i++ {
-	redo:
+	redo_tabs:
 		if strings.HasPrefix(lines[i], "\t") {
 			lines[i] = strings.TrimPrefix(lines[i], "\t")
-			goto redo
+			goto redo_tabs
+		}
+
+	redo_spaces:
+		if strings.HasPrefix(lines[i], "    ") {
+			lines[i] = strings.TrimPrefix(lines[i], "    ")
+			goto redo_spaces
 		}
 	}
 
