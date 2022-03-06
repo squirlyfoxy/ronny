@@ -1,5 +1,13 @@
 @type Libri
 {
-    ID          key         AUTOINCREMENT
+    ID          key     AUTOINCREMENT
     Titolo      string
+
+    @rule
+	{
+		@on_type
+		{
+			CAN_GLOBALLY_TAKE
+		} Libri;
+	};
 }
