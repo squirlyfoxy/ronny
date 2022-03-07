@@ -40,29 +40,42 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 		return map[string]interface{}{}
 	}
 
-	//Check if the key is valid
-	if key < 0 || key >= len(tableData.Data) {
-		return map[string]interface{}{
-			"error": "The key is not valid",
-		}
-	}
-
-	data := tableData.Data[key]
-
 	//Build the return ads JSON (get columns name from table)
 	var ret map[string]interface{}
 	//Initialize the map
 	ret = make(map[string]interface{})
 
 	var i int = 0
+	var data []string
+	var pr_key_pos int = 0
+	var entered bool = false
+
+	for _, col := range table.Columns {
+		if col.Type == KEY && col.Rule == AUTOINCREMENT {
+			break
+		}
+		pr_key_pos++
+	}
+
+	for _, v := range tableData.Data {
+		if v[pr_key_pos] == strconv.Itoa(key) {
+			entered = true
+			data = v
+			break
+		}
+	}
+
+	if !entered {
+		return map[string]interface{}{
+			"error": "No data found",
+		}
+	}
 
 	for _, column := range table.Columns {
 		current := data[i]
 
 		//Check if the columnt is int or float
 		if column.Type == INT || column.Type == FLOAT || (column.Type == KEY && column.Rule == AUTOINCREMENT) {
-			//Is a JSON, [tName]:[value]
-
 			//Convert current in a int
 			var currentInt int
 			currentInt, err = strconv.Atoi(current)
