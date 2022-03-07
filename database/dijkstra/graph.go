@@ -21,6 +21,18 @@ func (g *Graph) GetPath(origin, destiny string) (int, []string) {
 	h.Push(Path{value: 0, nodes: []string{origin}})
 	visited := make(map[string]bool)
 
+	if origin == destiny {
+		return 0, []string{origin}
+	}
+
+	if len(g.nodes[origin]) == 0 {
+		return -1, []string{"origin"}
+	}
+
+	if len(g.nodes[destiny]) == 0 {
+		return -1, []string{"destiny"}
+	}
+
 	for len(*h.values) > 0 {
 		p := h.Pop()
 		node := p.nodes[len(p.nodes)-1]
@@ -42,5 +54,5 @@ func (g *Graph) GetPath(origin, destiny string) (int, []string) {
 		visited[node] = true
 	}
 
-	return 0, nil
+	return -1, nil
 }

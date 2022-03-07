@@ -86,6 +86,39 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 
 			ret[column.Name] = currentInt
 		} else {
+			entered := false
+
+			for _, ext_type := range table.ExternalTypes {
+				if ext_type.ColumnName == column.Name {
+					//Get the data from the table "ext_type.Type" where the key is "current"
+					var ext_data map[string]interface{}
+
+					for _, tables := range database.Tables {
+						if tables.Name == ext_type.Type {
+							current_int, err := strconv.Atoi(current)
+							if err != nil {
+								fmt.Println(err)
+								return map[string]interface{}{}
+							}
+
+							ext_data = GetDataFromATable(database, tables, current_int)
+
+							ret[column.Name] = ext_data
+							entered = true
+
+							break
+						}
+					}
+
+					break
+				}
+			}
+
+			if entered {
+				i++
+				continue
+			}
+
 			ret[column.Name] = current
 		}
 

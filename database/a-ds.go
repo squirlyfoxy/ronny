@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,9 +31,7 @@ func CanGloballyTakeRoute(c *gin.Context) {
 
 	//Get the table
 	for _, table := range database.Tables {
-		name_to_lower := strings.ToLower(table.Name)
-
-		if name_to_lower == tableName {
+		if table.Name == tableName {
 			//Get the data
 			data := GetDataFromATable(*database, table, key_int)
 
@@ -58,13 +55,77 @@ func CanTakeRoute(c *gin.Context) {
 
 	///api/v1/take/[tableName]/from/[startTable]/where/[key]
 	//Get the table name
-	//tableName := c.Param("tableName")
+	tableName := c.Param("tableName")
 
 	//Get the start table
-	//startTable := c.Param("startTable")
+	startTable := c.Param("startTable")
 
 	//Get the key
-	//key := c.Param("key")
+	key := c.Param("key")
+	key_int, err := strconv.Atoi(key)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "key is not a number",
+		})
+		return
+	}
+
+	if tableName == "-" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "error",
+		})
+		return
+	}
+
+	//We need to determinate the path to the table (from the start)
+	//If the path pass the root, error (no correlation between the two tables)
+
+	//Get the table
+	cost, path := database.DijkstraRappresentation.GetPath(startTable, tableName)
+
+	if cost == -1 {
+		c.JSON(200, gin.H{
+			"message": "error",
+			"why":     "no path found",
+		})
+		return
+	}
+
+	if startTable == "-" || cost == 0 { //Starts from the root
+		//Get the table
+		for _, table := range database.Tables {
+			if table.Name == tableName { //Check if the table exists
+				//Get the data
+				data := GetDataFromATable(*database, table, key_int)
+
+				//Return the data
+				c.JSON(200, gin.H{
+					"data": data,
+				})
+				return
+			}
+		}
+	} else {
+		if cost > 0 {
+			//Check if in the path there is a "-", if so, error (no correlation between the two)
+			for _, node := range path {
+				if node == "-" {
+					c.JSON(200, gin.H{
+						"message": "error",
+						"why":     "no correlation between the two types",
+					})
+					return
+				}
+			}
+		}
+
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "error",
+		"why":     "table not found",
+	})
 }
 
 func StartADS(db *Database) {

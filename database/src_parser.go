@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func GetColumnType(spl []string) ColumnType {
+func GetColumnType(spl []string, col_n string, table *Table) ColumnType {
 	//Get the column type
 
 	//If the column type is a string
@@ -38,14 +38,16 @@ func GetColumnType(spl []string) ColumnType {
 		return KEY
 	}
 
-	//TODO: TYPES FROM OTHER TYPES
+	var ts ExternalType
+	ts.Type = spl[1]
+	ts.ColumnName = col_n
 
-	//Not found
-	fmt.Println("Type not found")
+	table.ExternalTypes = append(table.ExternalTypes, ts)
+
 	return DEFAULT
 }
 
-func GetColumnRule(spl []string) ColumnRule {
+func GetColumnRule(spl []string, col_n string, table *Table) ColumnRule {
 	//AUTOINCREMENT
 	//UNIQUE
 	//NOT_NULL
@@ -83,7 +85,7 @@ func GetColumnRule(spl []string) ColumnRule {
 	return DEFAULT
 }
 
-func ParseColumns(lines []string, start int) ([]Column, int) {
+func ParseColumns(lines []string, table *Table, start int) ([]Column, int) {
 	//Will return the columns and the index of the next line to be parsed
 
 	//The columns will be created in the following way:
@@ -125,9 +127,9 @@ func ParseColumns(lines []string, start int) ([]Column, int) {
 		//Get the column name
 		col.Name = spl[0]
 		//Get the column type
-		col.Type = GetColumnType(spl)
+		col.Type = GetColumnType(spl, col.Name, table)
 		//Get the column rule
-		col.Rule = GetColumnRule(spl)
+		col.Rule = GetColumnRule(spl, col.Name, table)
 
 		//Check the name
 		if col.Name == "" {
@@ -208,7 +210,7 @@ func Parse(lines []string) Table {
 			}
 
 			//Call a method that will parse all the columns
-			table.Columns, i = ParseColumns(lines, i)
+			table.Columns, i = ParseColumns(lines, &table, i)
 			columns_creation_process_finished = true
 
 			continue

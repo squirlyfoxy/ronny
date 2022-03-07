@@ -56,6 +56,10 @@ func (d *Database) UpdateDB() {
 		for _, subtable := range table.SubTables {
 			d.DijkstraRappresentation.AddEdge(table.Name, subtable.Name, 1)
 		}
+		//1:N
+		for _, ext_ty := range table.ExternalTypes {
+			d.DijkstraRappresentation.AddEdge(table.Name, ext_ty.Type, 1)
+		}
 	}
 }
 

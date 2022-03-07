@@ -68,10 +68,16 @@ type TableData struct {
 	Data    [][]string `json:"data"`    //Will store the data
 }
 
+type ExternalType struct {
+	Type       string `json:"type"`
+	ColumnName string `json:"columnName"`
+}
+
 type Table struct {
-	Name      string     `json:"name"`
-	SubTables []Table    `json:"subTables"`
-	Columns   []Column   `json:"columns"`
-	Functions []Function `json:"functions"`
-	Rule      Rule       `json:"rule"`
+	Name          string         `json:"name"`
+	SubTables     []Table        `json:"subTables"`
+	Columns       []Column       `json:"columns"`
+	Functions     []Function     `json:"functions"`
+	Rule          Rule           `json:"rule"`
+	ExternalTypes []ExternalType `json:"externalTypes"`
 }
