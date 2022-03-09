@@ -3,25 +3,27 @@ package database
 type ColumnType int
 
 const (
-	ColType ColumnType = 0
-	KEY                = 0
-	STRING             = 1
-	INT                = 2
-	FLOAT              = 3
-	BOOL               = 4
-	DATE               = 5
+	ColType  ColumnType = 0
+	KEY                 = 0
+	STRING              = 1
+	INT                 = 2
+	FLOAT               = 3
+	BOOL                = 4
+	DATE                = 5
+	EXTERNAL            = 6
 )
 
 //******************
 //	  Column Type
 //******************
-var ColumnTypes = [6]string{
+var ColumnTypes = [7]string{
 	"key",
 	"string",
 	"int",
 	"float",
 	"bool",
 	"date",
+	"external",
 }
 
 type ColumnRule int
@@ -52,15 +54,15 @@ type RuleType struct {
 }
 
 type Rule struct {
-	//Name of the column
-	RefeersTo string     `json:"refersTo"`
+	RefeersTo string     `json:"refersTo"` //Name of the column that this rule is referring to
 	RuleTypes []RuleType `json:"ruleTypes"`
 }
 
 type Column struct {
-	Name string     `json:"name"`
-	Type ColumnType `json:"type"`
-	Rule ColumnRule `json:"rule"`
+	Name    string     `json:"name"`
+	Type    ColumnType `json:"type"`
+	IsArray bool       `json:"isArray"` //If the column is an array (type starts with [])
+	Rule    ColumnRule `json:"rule"`
 }
 
 type TableData struct {

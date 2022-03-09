@@ -44,7 +44,7 @@ func GetColumnType(spl []string, col_n string, table *Table) ColumnType {
 
 	table.ExternalTypes = append(table.ExternalTypes, ts)
 
-	return DEFAULT
+	return EXTERNAL
 }
 
 func GetColumnRule(spl []string, col_n string, table *Table) ColumnRule {
@@ -116,7 +116,7 @@ func ParseColumns(lines []string, table *Table, start int) ([]Column, int) {
 		//From the current line create an array that in each position will contains only one word
 		//Only characters will remains
 		spl := strings.FieldsFunc(lines[i], func(r rune) bool {
-			return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r == '_')
+			return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r == '_' || r == '[' || r == ']')
 		})
 
 		//If len(sql) = 0, split
@@ -127,13 +127,18 @@ func ParseColumns(lines []string, table *Table, start int) ([]Column, int) {
 		//Get the column name
 		col.Name = spl[0]
 		//Get the column type
+		if strings.HasPrefix(spl[1], "[]") {
+			col.IsArray = true
+			spl[1] = spl[1][2:]
+		}
+
 		col.Type = GetColumnType(spl, col.Name, table)
 		//Get the column rule
 		col.Rule = GetColumnRule(spl, col.Name, table)
 
 		//Check the name
 		if col.Name == "" {
-			panic("Column name is empty")
+			fmt.Println("Column name is empty")
 		}
 
 		cols = append(cols, col)
