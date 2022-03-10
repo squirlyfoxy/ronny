@@ -117,6 +117,29 @@ func CanTakeRoute(c *gin.Context) {
 					return
 				}
 			}
+
+			//We need to follow the path (path) to get the data
+			for _, table := range database.Tables {
+				if table.Name == startTable { //Check if the table exists
+					//Get the data
+					data := GetDataFromATable(*database, table, key_int)
+
+					var ret interface{} = data[path[1]]
+
+					//Loop through the path
+					for i := 2; i < len(path); i++ {
+						ret = ret.(map[string]interface{})[path[i]]
+					}
+
+					//Return the data
+					c.JSON(200, gin.H{
+						"data": ret,
+					})
+
+					return
+				}
+			}
+
 		}
 
 		return
