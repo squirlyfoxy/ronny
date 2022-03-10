@@ -4,6 +4,7 @@
 	Nome			string
 	Cognome			string
 	Data_Nascita	date
+	ArrayDiStringhe []string
 	Libri			[]Libri
 	Chiave_Utente	key		USERACCESSKEY
 	

@@ -59,15 +59,17 @@ type Rule struct {
 }
 
 type Column struct {
-	Name    string     `json:"name"`
-	Type    ColumnType `json:"type"`
-	IsArray bool       `json:"isArray"` //If the column is an array (type starts with [])
-	Rule    ColumnRule `json:"rule"`
+	Name         string     `json:"name"`
+	Type         ColumnType `json:"type"`
+	TypeAsString string     `json:"typeAsString"`
+	IsArray      bool       `json:"isArray"`  //If the column is an array (type starts with [])
+	IsExtern     bool       `json:"isExtern"` //If
+	Rule         ColumnRule `json:"rule"`
 }
 
 type TableData struct {
-	Columns []Column   `json:"columns"` //Will store the name of the columns
-	Data    [][]string `json:"data"`    //Will store the data
+	Columns []Column        `json:"columns"` //Will store the name of the columns
+	Data    [][]interface{} `json:"data"`    //Will store the data of the columns
 }
 
 type ExternalType struct {

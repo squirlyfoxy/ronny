@@ -33,7 +33,7 @@ func CreateTFile(path string) {
 func InitTFile(path string, t Table) {
 	var t_data TableData
 	t_data.Columns = t.Columns
-	t_data.Data = [][]string{}
+	t_data.Data = make([][]interface{}, 0)
 
 	file, err := os.OpenFile(path, os.O_RDWR, 0777)
 	if err != nil {
@@ -61,6 +61,16 @@ func (d *Database) UpdateDB() {
 			d.DijkstraRappresentation.AddEdge(table.Name, ext_ty.Type, 1)
 		}
 	}
+}
+
+func (d *Database) GetTable(tableName string) Table {
+	for _, table := range d.Tables {
+		if table.Name == tableName {
+			return table
+		}
+	}
+
+	return Table{}
 }
 
 func (d *Database) ReadScript(path string) {

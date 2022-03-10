@@ -133,6 +133,14 @@ func ParseColumns(lines []string, table *Table, start int) ([]Column, int) {
 		}
 
 		col.Type = GetColumnType(spl, col.Name, table)
+		//If col.Type is EXTERNAL
+		if col.Type == EXTERNAL {
+			col.IsExtern = true
+		}
+
+		//set the column type as string
+		col.TypeAsString = spl[1]
+
 		//Get the column rule
 		col.Rule = GetColumnRule(spl, col.Name, table)
 

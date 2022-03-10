@@ -139,6 +139,8 @@ func StartCMD(dt db.Database) {
 					fmt.Printf("  <- PRIMARY_KEY")
 				} else if c.Rule == db.USERACCESSKEY {
 					fmt.Printf("  <- USER_ACCESS_KEY")
+				} else if c.IsArray {
+					fmt.Printf("  <- ARRAY")
 				}
 				fmt.Printf("\n")
 			}

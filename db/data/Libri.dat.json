@@ -1,7 +1,4 @@
-{"columns":[{"name":"ID","type":0,"rule":1},{"name":"Titolo","type":1,"rule":0}],"data":[
-    ["0","Titolo 1"],
-    ["50","Titolo 2"],
-    ["2","Titolo 3"],
-    ["3","Titolo 4"],
-    ["4","Titolo 5"]
+{"columns":[{"name":"ID","type":0,"isArray":false,"rule":1},{"name":"Titolo","type":1,"isArray":false,"rule":0}],"data":[
+    ["0", "Il cielo nella stanza"],
+    ["1", "Le avventure di robin hood"]
 ]}

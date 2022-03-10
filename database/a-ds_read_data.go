@@ -1,10 +1,12 @@
 package database
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func GetDataFromATable(database Database, table Table, key int) map[string]interface{} {
@@ -34,7 +36,19 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 
 	//Read the data (TableData)
 	var tableData TableData
-	err = json.NewDecoder(file).Decode(&tableData)
+
+	//Get the text
+	//redo:
+	scanner := bufio.NewScanner(file)
+	lines := []string{}
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	//Parse the text
+	err = json.Unmarshal([]byte(strings.Join(lines, "\n")), &tableData)
+
 	if err != nil {
 		fmt.Println(err)
 		return map[string]interface{}{}
@@ -45,8 +59,7 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 	//Initialize the map
 	ret = make(map[string]interface{})
 
-	var i int = 0
-	var data []string
+	var data map[string]interface{} = make(map[string]interface{})
 	var pr_key_pos int = 0
 	var entered bool = false
 
@@ -60,69 +73,62 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 	for _, v := range tableData.Data {
 		if v[pr_key_pos] == strconv.Itoa(key) {
 			entered = true
-			data = v
+
+			for i, col := range table.Columns {
+				data[col.Name] = v[i]
+			}
+
 			break
 		}
 	}
-
 	if !entered {
 		return map[string]interface{}{
 			"error": "No data found",
 		}
 	}
 
-	for _, column := range table.Columns {
-		current := data[i]
-
-		//Check if the columnt is int or float
-		if column.Type == INT || column.Type == FLOAT || (column.Type == KEY && column.Rule == AUTOINCREMENT) {
-			//Convert current in a int
-			var currentInt int
-			currentInt, err = strconv.Atoi(current)
-			if err != nil {
-				fmt.Println(err)
-				return map[string]interface{}{}
+	for key, currentat := range data {
+		var pos int = 0
+		for _, col := range table.Columns {
+			if col.Name == key {
+				break
 			}
-
-			ret[column.Name] = currentInt
-		} else {
-			entered := false
-
-			for _, ext_type := range table.ExternalTypes {
-				if ext_type.ColumnName == column.Name {
-					//Get the data from the table "ext_type.Type" where the key is "current"
-					var ext_data map[string]interface{}
-
-					for _, tables := range database.Tables {
-						if tables.Name == ext_type.Type {
-							current_int, err := strconv.Atoi(current)
-							if err != nil {
-								fmt.Println(err)
-								return map[string]interface{}{}
-							}
-
-							ext_data = GetDataFromATable(database, tables, current_int)
-
-							ret[column.Name] = ext_data
-							entered = true
-
-							break
-						}
-					}
-
-					break
-				}
-			}
-
-			if entered {
-				i++
-				continue
-			}
-
-			ret[column.Name] = current
+			pos++
 		}
 
-		i++
+		column := table.Columns[pos]
+
+		//IF the column is a foreign key, get the data from the other table
+		if column.IsExtern {
+			if column.IsArray {
+				var array []interface{} = make([]interface{}, 0)
+				for _, v := range currentat.([]interface{}) {
+					v_int, _ := strconv.Atoi(v.(string))
+					array = append(array, GetDataFromATable(database, database.GetTable(column.TypeAsString), v_int))
+				}
+				ret[column.Name] = array
+			} else {
+				currentat_int, _ := strconv.Atoi(currentat.(string))
+				ret[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), currentat_int)
+			}
+
+			continue
+		}
+
+		if column.Type == INT || (column.Type == KEY && column.Rule == AUTOINCREMENT) {
+
+			currentat_int, _ := strconv.Atoi(currentat.(string))
+			ret[column.Name] = currentat_int
+
+			continue
+		} else if column.Type == FLOAT {
+			currentat_float, _ := strconv.ParseFloat(currentat.(string), 64)
+			ret[column.Name] = currentat_float
+
+			continue
+		}
+
+		ret[column.Name] = currentat
 	}
 
 	return ret
