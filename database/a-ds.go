@@ -10,6 +10,20 @@ import (
 
 var database *Database
 
+func GetTable(tableName string, key int) map[string]interface{} {
+	//Get the table
+	for _, table := range database.Tables {
+		if table.Name == tableName {
+			//Get the data
+			data := GetDataFromATable(*database, table, key)
+
+			return data
+		}
+	}
+
+	return nil
+}
+
 func CanGloballyTakeRoute(c *gin.Context) {
 	//Set json
 	c.Header("Content-Type", "application/json")
@@ -29,24 +43,19 @@ func CanGloballyTakeRoute(c *gin.Context) {
 		return
 	}
 
-	//Get the table
-	for _, table := range database.Tables {
-		if table.Name == tableName {
-			//Get the data
-			data := GetDataFromATable(*database, table, key_int)
-
-			//Return the data
-			c.JSON(200, gin.H{
-				"data": data,
-			})
-			return
-		}
+	data := GetTable(tableName, key_int)
+	if data == nil {
+		c.JSON(200, gin.H{
+			"message": "error",
+			"why":     "table not found",
+		})
+		return
+	} else {
+		c.JSON(200, gin.H{
+			"data": data,
+		})
+		return
 	}
-
-	c.JSON(200, gin.H{
-		"message": "error",
-		"why":     "table not found",
-	})
 }
 
 func CanTakeRoute(c *gin.Context) {
@@ -93,17 +102,12 @@ func CanTakeRoute(c *gin.Context) {
 
 	if startTable == "-" || cost == 0 { //Starts from the root
 		//Get the table
-		for _, table := range database.Tables {
-			if table.Name == tableName { //Check if the table exists
-				//Get the data
-				data := GetDataFromATable(*database, table, key_int)
-
-				//Return the data
-				c.JSON(200, gin.H{
-					"data": data,
-				})
-				return
-			}
+		data := GetTable(tableName, key_int)
+		if data != nil {
+			c.JSON(200, gin.H{
+				"data": data,
+			})
+			return
 		}
 	} else {
 		if cost > 0 {

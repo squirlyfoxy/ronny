@@ -48,16 +48,13 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 
 	//Parse the text
 	err = json.Unmarshal([]byte(strings.Join(lines, "\n")), &tableData)
-
 	if err != nil {
 		fmt.Println(err)
 		return map[string]interface{}{}
 	}
 
 	//Build the return ads JSON (get columns name from table)
-	var ret map[string]interface{}
-	//Initialize the map
-	ret = make(map[string]interface{})
+	var ret map[string]interface{} = make(map[string]interface{})
 
 	var data map[string]interface{} = make(map[string]interface{})
 	var pr_key_pos int = 0
@@ -109,12 +106,7 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 				}
 				ret[column.Name] = array
 			} else {
-				currentat_int, _ := strconv.Atoi(currentat.(string))
-				ret[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), currentat_int)
-			}
-
-			//1:N
-			if column.Type == KEY && column.Rule == AUTOINCREMENT {
+				//1:N
 				currentat_int, _ := strconv.Atoi(currentat.(string))
 				ret[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), currentat_int)
 			}
@@ -123,7 +115,6 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 		}
 
 		if column.Type == INT || (column.Type == KEY && column.Rule == AUTOINCREMENT) {
-
 			currentat_int, _ := strconv.Atoi(currentat.(string))
 			ret[column.Name] = currentat_int
 
