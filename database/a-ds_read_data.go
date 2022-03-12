@@ -100,6 +100,7 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 
 		//IF the column is a foreign key, get the data from the other table
 		if column.IsExtern {
+			//N:N
 			if column.IsArray {
 				var array []interface{} = make([]interface{}, 0)
 				for _, v := range currentat.([]interface{}) {
@@ -108,6 +109,12 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 				}
 				ret[column.Name] = array
 			} else {
+				currentat_int, _ := strconv.Atoi(currentat.(string))
+				ret[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), currentat_int)
+			}
+
+			//1:N
+			if column.Type == KEY && column.Rule == AUTOINCREMENT {
 				currentat_int, _ := strconv.Atoi(currentat.(string))
 				ret[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), currentat_int)
 			}
