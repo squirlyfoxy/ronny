@@ -12,12 +12,13 @@ import (
 
 //Saved as json in './db/database.json'
 type Database struct {
-	Name                    string          `json:"name"`
-	Scripts                 []string        `json:"scripts"`           //Scripts path
-	DatasFilesPaths         []string        `json:"datas_files_paths"` //Paths of the files containing the data (will be stored as jsons)
-	Tables                  []Table         `json:"tables"`            //Tables
-	Config                  Config          `json:"-"`
-	DijkstraRappresentation *dijkstra.Graph `json:"-"`
+	Name                      string          `json:"name"`
+	Scripts                   []string        `json:"scripts"`           //Scripts path
+	DatasFilesPaths           []string        `json:"datas_files_paths"` //Paths of the files containing the data (will be stored as jsons)
+	Tables                    []Table         `json:"tables"`            //Tables
+	WhereUSERACCESSKEYLocated string          `json:"-"`                 //Table name
+	Config                    Config          `json:"-"`
+	DijkstraRappresentation   *dijkstra.Graph `json:"-"`
 }
 
 func CreateTFile(path string) {
@@ -147,6 +148,14 @@ func ReadDatabase() (Database, error) {
 		return database, err
 	}
 	err = json.Unmarshal(file, &database)
+
+	for _, table := range database.Tables {
+		for _, column := range table.Columns {
+			if column.Type == USERACCESSKEY {
+				database.WhereUSERACCESSKEYLocated = table.Name
+			}
+		}
+	}
 
 	//Check if scripts are in the database
 	for _, scr := range database.Scripts {

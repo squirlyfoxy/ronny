@@ -10,18 +10,31 @@ import (
 
 var database *Database
 
-func GetTable(tableName string, key int) map[string]interface{} {
+func GetTable(tableName string, key int) (map[string]interface{}, Table) {
 	//Get the table
 	for _, table := range database.Tables {
 		if table.Name == tableName {
 			//Get the data
 			data := GetDataFromATable(*database, table, key)
 
-			return data
+			return data, table
 		}
 	}
 
-	return nil
+	return nil, Table{}
+}
+
+func CheckTableRule(table Table, rule OnType) bool {
+	//Check if the rule is on the table
+	for _, r := range table.Rule.RuleTypes {
+		for _, r2 := range r.Can {
+			if r2 == rule {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func CanGloballyTakeRoute(c *gin.Context) {
@@ -43,7 +56,14 @@ func CanGloballyTakeRoute(c *gin.Context) {
 		return
 	}
 
-	data := GetTable(tableName, key_int)
+	data, t := GetTable(tableName, key_int)
+	if !CheckTableRule(t, CAN_GLOBALLY_TAKE) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"message": "you can't take this",
+		})
+		return
+	}
+
 	if data == nil {
 		c.JSON(200, gin.H{
 			"message": "error",
@@ -102,7 +122,14 @@ func CanTakeRoute(c *gin.Context) {
 
 	if startTable == "-" || cost == 0 { //Starts from the root
 		//Get the table
-		data := GetTable(tableName, key_int)
+		data, t := GetTable(tableName, key_int)
+		if !CheckTableRule(t, CAN_TAKE) {
+			c.JSON(http.StatusForbidden, gin.H{
+				"message": "you can't take this",
+			})
+			return
+		}
+
 		if data != nil {
 			c.JSON(200, gin.H{
 				"data": data,
@@ -125,6 +152,13 @@ func CanTakeRoute(c *gin.Context) {
 			//We need to follow the path (path) to get the data
 			for _, table := range database.Tables {
 				if table.Name == startTable { //Check if the table exists
+					if !CheckTableRule(table, CAN_TAKE) {
+						c.JSON(http.StatusForbidden, gin.H{
+							"message": "you can't take this",
+						})
+						return
+					}
+
 					//Get the data
 					data := GetDataFromATable(*database, table, key_int)
 
