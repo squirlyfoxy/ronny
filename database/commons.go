@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 )
 
 //Contains (string in []string)
@@ -125,4 +127,17 @@ func HashAlreadyContained(hash string) bool {
 	}
 
 	return false
+}
+
+func GenerateUserAccessKey() string {
+	rand.Seed(int64(os.Getpid()) * time.Now().UnixNano())
+
+	//Generate a random string
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	b := make([]rune, 16)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+
+	return string(b)
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	dijkstra "github.com/squirlyfoxy/ronny/database/dijkstra"
 )
@@ -48,6 +49,8 @@ func InitTFile(path string, t Table) {
 }
 
 func (d *Database) UpdateDB() {
+	UnmarshallTablesIDsList()
+
 	d.DijkstraRappresentation = dijkstra.NewGraph()
 
 	for _, table := range d.Tables {
@@ -72,6 +75,119 @@ func (d *Database) GetTable(tableName string) Table {
 	}
 
 	return Table{}
+}
+
+func (d *Database) AddData(table Table, data []interface{}) {
+	//Get the path of the file
+	path := "./db/data/" + table.Name + ".dat.json"
+
+	//Read the file
+	file, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//Unmarshal the data
+	var t_data TableData
+	err = json.Unmarshal(file, &t_data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//data is an array of interface{}, we need to append something like that: "", "", []...
+	var new_data []interface{}
+	for i, d := range data {
+		if d == nil {
+			continue
+		}
+
+		//If is an array, the data to appenmd is ["el1", "el2", ...]"]
+		switch d.(type) {
+		case []interface{}:
+			//Check if the column at i is an array, if not..
+			if t_data.Columns[i].IsArray == false {
+				//There is a problem...
+				switch d.([]interface{})[len(d.([]interface{}))-1].(type) {
+				case string:
+					new_data = append(new_data, d.([]interface{})[len(d.([]interface{}))-1].(string))
+					break
+				case int:
+					new_data = append(new_data, d.([]interface{})[len(d.([]interface{}))-1].(int))
+					break
+				case float64:
+					new_data = append(new_data, d.([]interface{})[len(d.([]interface{}))-1].(float64))
+					break
+				case bool:
+					new_data = append(new_data, d.([]interface{})[len(d.([]interface{}))-1].(bool))
+					break
+				}
+
+				continue
+			}
+
+			//Take the last d.([]interface{})[len(d.([]interface{}))-1] that is a string and convert it to a []interface
+			to_convert := d.([]interface{})[len(d.([]interface{}))-1]
+			var to_append []interface{}
+
+			//Remove from to_convert [ and ]
+			to_convert = to_convert.(string)[1 : len(to_convert.(string))-1]
+			//Split by ,
+			ts := strings.Split(to_convert.(string), ",")
+
+			for _, el := range ts {
+				switch el {
+				case "":
+					continue
+				case "null":
+					to_append = append(to_append, nil)
+					break
+				case "true":
+					to_append = append(to_append, true)
+					break
+				case "false":
+					to_append = append(to_append, false)
+					break
+				default:
+					to_append = append(to_append, el)
+					break
+				}
+			}
+
+			new_data = append(new_data, to_append)
+
+			break
+		case int:
+			new_data = append(new_data, fmt.Sprintf("%d", d.(int)))
+			break
+		case float64:
+			new_data = append(new_data, fmt.Sprintf("%f", d.(float64)))
+			break
+		case bool:
+			new_data = append(new_data, d.(bool))
+			break
+		case string:
+			new_data = append(new_data, d.(string))
+			break
+		}
+	}
+	//Append the new data
+	t_data.Data = append(t_data.Data, new_data)
+
+	//Marshal the data
+	file, err = json.Marshal(t_data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//Write the data
+	err = ioutil.WriteFile(path, file, 0644)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 func (d *Database) ReadScript(path string) {
@@ -114,6 +230,8 @@ func (d *Database) ReadScript(path string) {
 
 	//Update the DijkstraRappresentation
 	d.UpdateDB()
+
+	AddTableToIDsList(table.Name)
 
 	//If "./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json" exists, skip it
 	if _, err := os.Stat("./db/data/" + d.Tables[len(d.Tables)-1].Name + ".dat.json"); err == nil {

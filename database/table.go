@@ -1,5 +1,11 @@
 package database
 
+import (
+	"encoding/json"
+	"io/ioutil"
+	"os"
+)
+
 type ColumnType int
 
 const (
@@ -84,4 +90,91 @@ type Table struct {
 	Functions     []Function     `json:"functions"`
 	Rule          Rule           `json:"rule"`
 	ExternalTypes []ExternalType `json:"externalTypes"`
+}
+
+//Saved in "./db/data/t_ids.json"
+type TablesIDs struct {
+	TableName string `json:"tableName"`
+	LatestsID int    `json:"latestID"`
+}
+
+var TablesIDsList []TablesIDs = make([]TablesIDs, 0)
+
+func UnmarshallTablesIDsList() {
+	//Unmarshall the json file
+	jsonFile, err := os.Open("./db/data/t_ids.json")
+	if err != nil {
+		panic(err)
+	}
+	defer jsonFile.Close()
+
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	json.Unmarshal(byteValue, &TablesIDsList)
+}
+
+func SaveTablesIDsList() {
+	josnData, _ := json.Marshal(TablesIDsList)
+
+	//Write the json file
+	err := ioutil.WriteFile("./db/data/t_ids.json", josnData, 0644)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func AddTableToIDsList(table string) {
+	//Check if TablesIDsList is empty
+	if len(TablesIDsList) == 0 {
+		//Unmarshall the json file
+		jsonFile, err := os.Open("./db/data/t_ids.json")
+		if err != nil {
+			panic(err)
+		}
+		defer jsonFile.Close()
+
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+		json.Unmarshal(byteValue, &TablesIDsList)
+	}
+
+	//Check if the table is already in the list
+	for _, t := range TablesIDsList {
+		if t.TableName == table {
+			return
+		}
+	}
+
+	//Add the table to the list
+	TablesIDsList = append(TablesIDsList, TablesIDs{
+		TableName: table,
+	})
+}
+
+func (t Table) GetLatestAutoIncrementedKey() int {
+	//Check if TablesIDsList is empty
+	if len(TablesIDsList) == 0 {
+		//Unmarshall the json file
+		jsonFile, err := os.Open("./db/data/t_ids.json")
+		if err != nil {
+			panic(err)
+		}
+		defer jsonFile.Close()
+
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+		json.Unmarshal(byteValue, &TablesIDsList)
+	}
+
+	//Get the first TRS of the table, if the array is empty, return LatestsID
+	for k, ts := range TablesIDsList {
+		if ts.TableName == t.Name {
+			ts.LatestsID += 1
+			TablesIDsList[k] = ts
+
+			//Save the new value
+			SaveTablesIDsList()
+
+			return ts.LatestsID
+		}
+	}
+
+	return -1
 }

@@ -37,6 +37,80 @@ func CheckTableRule(table Table, rule OnType) bool {
 	return false
 }
 
+func AddRoute(c *gin.Context) {
+	//Set json
+	c.Header("Content-Type", "application/json")
+
+	///api/v1/insert/[tableName]
+
+	//Table name
+	var data []interface{}
+	var tRef Table
+	tableName := c.Param("tableName")
+	found := false
+
+	for _, r := range database.Tables {
+		if r.Name == tableName {
+			found = true
+			tRef = r
+
+			if !CheckTableRule(r, CAN_ADD) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"message": "you can't add this",
+				})
+				return
+			}
+		}
+	}
+
+	if !found {
+		c.JSON(http.StatusForbidden, gin.H{
+			"message": "table not found",
+		})
+		return
+	}
+
+	data = make([]interface{}, len(tRef.Columns))
+
+	//Get the data
+	for i, r := range tRef.Columns {
+		if (r.Type == KEY && r.Rule == AUTOINCREMENT) || (r.Type == KEY && r.Rule == USERACCESSKEY) {
+			//If ID
+			if r.Rule == AUTOINCREMENT {
+				key := tRef.GetLatestAutoIncrementedKey()
+				if key == -1 {
+					c.JSON(http.StatusForbidden, gin.H{
+						"message": "undefined error",
+					})
+					return
+				}
+
+				data[i] = strconv.Itoa(key)
+			} else if r.Rule == USERACCESSKEY {
+				data[i] = GenerateUserAccessKey()
+			}
+
+			continue
+		}
+
+		data[i] = append(data, c.PostForm(r.Name))
+
+		if data[i] == "" && r.Rule != NOT_NULL {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "missing data in the " + r.Name + " column",
+			})
+			return
+		}
+	}
+
+	//Add the data
+	database.AddData(tRef, data)
+
+	c.JSON(200, gin.H{
+		"message": "data added successfully",
+	})
+}
+
 func CanGloballyTakeRoute(c *gin.Context) {
 	//Set json
 	c.Header("Content-Type", "application/json")
@@ -213,6 +287,10 @@ func StartADS(db *Database) {
 	r.GET("/api/v1/take/:tableName/where/:key", CanGloballyTakeRoute)
 	///api/v1/take/[tableName]/from/[startTable]/where/[key]
 	r.POST("/api/v1/take/:tableName/from/:startTable/where/:key", CanTakeRoute)
+	///api/v1/insert/[tableName]
+	//POST:
+	//		data of the table, [key-value]
+	r.POST("/api/v1/insert/:tableName", AddRoute)
 
 	//Start server
 	r.Run(db.Config.Host + ":" + fmt.Sprintf("%d", db.Config.Port))

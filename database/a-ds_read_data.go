@@ -100,14 +100,28 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 			//N:N
 			if column.IsArray {
 				var array []interface{} = make([]interface{}, 0)
+				if currentat == nil {
+					ret[key] = nil
+					continue
+				}
+
 				for _, v := range currentat.([]interface{}) {
-					v_int, _ := strconv.Atoi(v.(string))
+					v_int, err := strconv.Atoi(v.(string))
+					if err != nil {
+						ret[column.Name] = nil
+						continue
+					}
+
 					array = append(array, GetDataFromATable(database, database.GetTable(column.TypeAsString), v_int))
 				}
 				ret[column.Name] = array
 			} else {
 				//1:N
-				currentat_int, _ := strconv.Atoi(currentat.(string))
+				currentat_int, err := strconv.Atoi(currentat.(string))
+				if err != nil {
+					ret[column.Name] = nil
+					continue
+				}
 				ret[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), currentat_int)
 			}
 
