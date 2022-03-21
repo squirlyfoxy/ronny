@@ -268,10 +268,18 @@ func ReadDatabase() (Database, error) {
 	err = json.Unmarshal(file, &database)
 
 	for _, table := range database.Tables {
+		located := false
+
 		for _, column := range table.Columns {
 			if column.Type == USERACCESSKEY {
 				database.WhereUSERACCESSKEYLocated = table.Name
+				located = true
+				break
 			}
+		}
+
+		if located {
+			break
 		}
 	}
 
