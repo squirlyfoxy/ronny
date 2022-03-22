@@ -24,19 +24,6 @@ func GetTable(tableName string, key int) (map[string]interface{}, Table) {
 	return nil, Table{}
 }
 
-func CheckTableRule(table Table, rule OnType) bool {
-	//Check if the rule is on the table
-	for _, r := range table.Rule.RuleTypes {
-		for _, r2 := range r.Can {
-			if r2 == rule {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 func AddRoute(c *gin.Context) {
 	//Set json
 	c.Header("Content-Type", "application/json")

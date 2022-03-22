@@ -283,19 +283,16 @@ func ReadDatabase() (Database, error) {
 		}
 	}
 
-	//Check if scripts are in the database
-	for _, scr := range database.Scripts {
-		if _, err := os.Stat(scr); os.IsNotExist(err) {
-			//Print error in red: Script [path] not found, remove it from the database will erase the data. (y/n)
-		redo:
-			fmt.Printf("\033[31mScript [%s] not found, remove it from the database will erase the data. (y/n) -> \033[0m", scr)
+	var ScriptCheck = func(src string) {
+		for {
+			fmt.Printf("\033[31mScript [%s] not found, remove it from the database will erase the data. (y/n) -> \033[0m", src)
 			var answer string
 
 			fmt.Scanln(&answer)
 
 			if answer == "y" {
 				//Remove the script from the database
-				database.Scripts = Remove(database.Scripts, scr)
+				database.Scripts = Remove(database.Scripts, src)
 
 				//Remove the data file
 				database.DatasFilesPaths = Remove(database.DatasFilesPaths, "./db/data/"+database.Tables[len(database.Tables)-1].Name+".dat.json")
@@ -306,10 +303,20 @@ func ReadDatabase() (Database, error) {
 
 				//Print in green: Script [path] removed
 				fmt.Println("")
-				fmt.Printf("\033[32mScript [%s] removed\033[0m\n", scr)
-			} else if err != nil {
-				goto redo
+				fmt.Printf("\033[32mScript [%s] removed\033[0m\n", src)
+
+				break
+			} else if answer == "n" {
+				break
 			}
+		}
+	} //ScriptCheck()
+
+	//Check if scripts are in the database
+	for _, scr := range database.Scripts {
+		if _, err := os.Stat(scr); os.IsNotExist(err) {
+			//Print error in red: Script [path] not found, remove it from the database will erase the data. (y/n)
+			ScriptCheck(scr)
 		}
 	}
 

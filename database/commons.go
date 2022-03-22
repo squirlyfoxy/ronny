@@ -14,6 +14,11 @@ import (
 
 //Contains (string in []string)
 func Contains(s []string, e string) bool {
+	//Check inputs
+	if s == nil || e == "" {
+		return false
+	}
+
 	for _, a := range s {
 		if a == e {
 			return true
@@ -22,16 +27,23 @@ func Contains(s []string, e string) bool {
 	return false
 }
 
-func ContainsORtype(s []OnType, e int) bool {
+func ContainsOnType(s []OnType, e int) bool {
 	for _, a := range s {
-		//a to int
-		it := int(a)
-
-		//Check if it contains the int
-		if it == e {
+		if int(a) == e {
 			return true
 		}
 	}
+	return false
+}
+
+func CheckTableRule(table Table, rule OnType) bool {
+	//Check if the rule is on the table
+	for _, r := range table.Rule.RuleTypes {
+		if ContainsOnType(r.Can, int(rule)) {
+			return true
+		}
+	}
+
 	return false
 }
 

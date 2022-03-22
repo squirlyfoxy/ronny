@@ -9,16 +9,12 @@ import (
 	"strings"
 )
 
+//Buffers
+var primary_key_positions_buffer map[string]int = make(map[string]int)
+
 func GetDataFromATable(database Database, table Table, key int) map[string]interface{} {
 	//Check if CAN_GLOBALLY_TAKE
-	contains := false
-
-	for _, ts := range table.Rule.RuleTypes {
-		if ContainsORtype(ts.Can, CAN_GLOBALLY_TAKE) {
-			contains = true
-		}
-	}
-	if !contains {
+	if !CheckTableRule(table, CAN_GLOBALLY_TAKE) {
 		return map[string]interface{}{
 			"error": "You can't take this data",
 		}
@@ -32,7 +28,6 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 			"error": "Error while opening the file",
 		}
 	}
-	defer file.Close()
 
 	//Read the data (TableData)
 	var tableData TableData
@@ -45,6 +40,7 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
+	file.Close()
 
 	//Parse the text
 	err = json.Unmarshal([]byte(strings.Join(lines, "\n")), &tableData)
@@ -53,26 +49,33 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 		return map[string]interface{}{}
 	}
 
-	//Build the return ads JSON (get columns name from table)
 	var ret map[string]interface{} = make(map[string]interface{})
-
 	var data map[string]interface{} = make(map[string]interface{})
+
 	var pr_key_pos int = 0
 	var entered bool = false
 
-	for _, col := range table.Columns {
-		if col.Type == KEY && col.Rule == AUTOINCREMENT {
-			break
+	//Position of the primary key
+	//Check if primary_key_positions_buffer contains the table name as a key
+	if _, ok := primary_key_positions_buffer[table.Name]; ok {
+		pr_key_pos = primary_key_positions_buffer[table.Name]
+	} else {
+		for _, col := range table.Columns {
+			if col.Type == KEY && col.Rule == AUTOINCREMENT {
+				break
+			}
+			pr_key_pos++
 		}
-		pr_key_pos++
+
+		primary_key_positions_buffer[table.Name] = pr_key_pos
 	}
 
-	for _, v := range tableData.Data {
-		if v[pr_key_pos] == strconv.Itoa(key) {
+	for _, v := range tableData.Data { //For each row
+		if v[pr_key_pos] == strconv.Itoa(key) { //If the primary key is the same as the key we are looking for
 			entered = true
 
-			for i, col := range table.Columns {
-				data[col.Name] = v[i]
+			for i, v2 := range v {
+				data[table.Columns[i].Name] = v2
 			}
 
 			break
@@ -92,18 +95,18 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 			}
 			pos++
 		}
-
 		column := table.Columns[pos]
+
+		if currentat == nil {
+			ret[column.Name] = nil
+			continue
+		}
 
 		//IF the column is a foreign key, get the data from the other table
 		if column.IsExtern {
 			//N:N
 			if column.IsArray {
 				var array []interface{} = make([]interface{}, 0)
-				if currentat == nil {
-					ret[key] = nil
-					continue
-				}
 
 				for _, v := range currentat.([]interface{}) {
 					v_int, err := strconv.Atoi(v.(string))
