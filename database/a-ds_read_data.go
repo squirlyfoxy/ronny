@@ -148,3 +148,48 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 
 	return ret
 }
+
+func GetAllData(
+	database *Database,
+	table Table,
+) []map[string]interface{} {
+	//Read the JSON (./db/data/[tableName].dat.json)
+	file, err := os.Open("./db/data/" + table.Name + ".dat.json")
+	if err != nil {
+		fmt.Println(err)
+		return []map[string]interface{}{}
+	}
+
+	//Read the data (TableData)
+	var tableData TableData
+
+	//Get the text
+	//redo:
+	scanner := bufio.NewScanner(file)
+	lines := []string{}
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	file.Close()
+
+	//Parse the text
+	err = json.Unmarshal([]byte(strings.Join(lines, "\n")), &tableData)
+	if err != nil {
+		fmt.Println(err)
+		return []map[string]interface{}{}
+	}
+
+	var ret []map[string]interface{} = make([]map[string]interface{}, 0)
+
+	for _, v := range tableData.Data {
+		var data map[string]interface{} = make(map[string]interface{})
+
+		for i, v2 := range v {
+			data[table.Columns[i].Name] = v2
+		}
+
+		ret = append(ret, data)
+	}
+	return ret
+}

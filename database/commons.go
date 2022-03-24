@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -152,4 +154,12 @@ func GenerateUserAccessKey() string {
 	}
 
 	return string(b)
+}
+
+func AlphanumericOnly(s string) string {
+	reg, err := regexp.Compile("[^a-zA-Z0-9_-]+")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return reg.ReplaceAllString(s, "")
 }

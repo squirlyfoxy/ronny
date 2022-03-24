@@ -256,6 +256,11 @@ func StartADS(db *Database) {
 
 	database = db
 
+	_, err := ExecuteFunction(database.GetTable("Utenti"), database.GetTable("Utenti").Functions[0])
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	//Routes
 	r.GET("/api/v1/", func(c *gin.Context) {
 		if db.Config.DoDefaultRoute == 1 {

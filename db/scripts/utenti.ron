@@ -10,7 +10,7 @@
 	
 	@function (TakeTuttiMaggiorenni)
 	{
-		@var (Utenti) 
+		@var (Utenti)
 		{
 			Nome
 			Cognome
@@ -18,7 +18,7 @@
 	
 		loop on * as utente
 		{
-			if date.CalculateAge(utente.Data_Nascita) >= 18
+			if utente.Data_Nascita.CalculateAge() >= 18
 			{
 				_usrs.Add(utente);
 			}
