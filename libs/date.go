@@ -1,11 +1,3 @@
-/*
-	RON LIBRARYES
-
-	Date, used by function execution
-
-	Developed by: @squirlyfoxy
-*/
-
 package libs
 
 import "time"
