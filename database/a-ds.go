@@ -250,6 +250,46 @@ func CanTakeRoute(c *gin.Context) {
 	})
 }
 
+func GetAllDataRoute(c *gin.Context) {
+	//Set json
+	c.Header("Content-Type", "application/json")
+
+	///api/v1/getAll/[tableName]
+
+	//Check if the client is "localhost"
+	//Get the server local IP
+	localIP := GetLocalIP()
+
+	if c.ClientIP() != localIP {
+		//404
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "not found",
+		})
+		return
+	}
+
+	//Get the table name
+	tableName := c.Param("tableName")
+
+	//Get the table
+	for _, table := range database.Tables {
+		if table.Name == tableName { //Check if the table exists
+			data := GetAllData(database, table)
+
+			c.JSON(200, gin.H{
+				"data": data,
+			})
+
+			return
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"message": "error",
+		"why":     "table not found",
+	})
+}
+
 func StartADS(db *Database) {
 	//Gin server
 	r := gin.Default()
@@ -275,6 +315,8 @@ func StartADS(db *Database) {
 		}
 	})
 
+	//api/v1/getAll/[tableName]
+	r.GET("/api/v1/getAll/:tableName", GetAllDataRoute)
 	//api/v1/take/[tableName]/where/[key]
 	r.GET("/api/v1/take/:tableName/where/:key", CanGloballyTakeRoute)
 	///api/v1/take/[tableName]/from/[startTable]/where/[key]
