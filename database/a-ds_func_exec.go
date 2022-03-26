@@ -7,11 +7,55 @@ import (
 	"time"
 )
 
-func ExecuteFunction(
+func ReadLib(file string) ([]string, []string) {
+	//Will return the contents and the imports
+	contents, err := ioutil.ReadFile(file)
+	if err != nil {
+		panic(err)
+	}
+
+	lines := strings.Split(string(contents), "\n")
+
+	lines = Remove(lines, "package libs")
+	imports := make([]string, 0)
+
+	//TODO:
+
+	//Get the imports
+	//imports (
+	//""
+	//)
+	//var x bool = false
+	/*for _, line := range lines {
+		fmt.Println(x)
+		//imports (
+		//""
+		//)
+		if line == "imports (\n" {
+			x = true
+			continue
+		}
+
+		if x {
+			fmt.Println(line)
+			if strings.Contains(line, ")") {
+				x = false
+				break
+			} else {
+				imports = append(imports, line)
+			}
+		}
+	}*/
+
+	return lines, imports
+}
+
+//TODO: Needs to be refactored (the code is too long)
+func CompileFunction(
 	table Table,
 	function Function,
-) (interface{}, error) {
-	//Execute function and return result
+) error {
+	//Compile function and return result
 	//Read the script of the table (and get from that only the rows of the function)
 
 	var lines []string
@@ -27,7 +71,7 @@ func ExecuteFunction(
 					script_path := database.Scripts[x]
 					content, err := ioutil.ReadFile(script_path)
 					if err != nil {
-						return nil, err
+						return err
 					}
 
 					//Get only the rows of the function
@@ -63,47 +107,30 @@ func ExecuteFunction(
 	transpiled_script += "//Transpiled function: " + function.Name + "\n"
 
 	transpiled_script += "package main\n"
-	transpiled_script += "import (\n"
-	transpiled_script += "\t\"encoding/json\"\n"
+	imports := "import (\n"
 
 	//Read the file ./libs/date.go, remove from that the line "package libs" and add it to the transpiled script
-	content_lns, err := ioutil.ReadFile("./libs/date.go")
-	if err != nil {
-		return nil, err
-	}
-
-	lns_types := strings.Split(string(content_lns), "\n")[1:]
-
-	//Get from the lns_types the imports of the date.go file
-	for _, ln := range lns_types {
-		if strings.HasPrefix(ln, "import") {
-			a := strings.TrimPrefix(ln, "import ")
-			//add to transpiled_script at the import a
-			transpiled_script += a + "\n"
-
-			//remove the import from the lns_types
-			lns_types = Remove(lns_types, ln)
-
-			break
-		}
-	}
-
-	transpiled_script += ")\n"
-	transpiled_script += strings.Join(lns_types, "\n")
+	content_date_lib, imports_date_lib := ReadLib("./libs/date.go")
+	imports += strings.Join(imports_date_lib, "\n")
+	fmt.Println(imports_date_lib)
+	libs := strings.Join(content_date_lib, "\n")
 
 	//Read the file ./libs/types.go, remove from that the line "package libs" and add it to the transpiled script
-	content_lns, err = ioutil.ReadFile("./libs/types.go")
-	if err != nil {
-		return nil, err
-	}
+	content_types_lib, _ := ReadLib("./libs/types.go")
 
-	lns_types = strings.Split(string(content_lns), "\n")[1:]
-	transpiled_script += strings.Join(lns_types, "\n")
+	libs += strings.Join(content_types_lib, "\n")
+	libs += "\n"
+	fmt.Println(libs)
 
 	//packages_to_import := []string{} //Packages to import
 	restart_index := 0
 	for i, line := range lines {
 		if i < restart_index {
+			continue
+		}
+
+		//Comments
+		if strings.HasPrefix(line, "//") {
 			continue
 		}
 
@@ -150,6 +177,8 @@ func ExecuteFunction(
 					rows_to_select = append(rows_to_select, lines[j])
 				}
 				modified_tyepes_args[name] = rows_to_select
+				var extern []string
+				var entered_in_extern bool
 
 				if !Contains(types_list, type_+"_"+name) {
 					//Check if the type is a table
@@ -173,6 +202,12 @@ func ExecuteFunction(
 								} else {
 									original_type[cols.Name] = "[]" + cols.TypeAsString
 								}
+
+								if cols.IsExtern {
+									//We need to add a new type
+									entered_in_extern = true
+									extern = append(extern, cols.Name)
+								}
 							}
 
 							is_table = true
@@ -180,7 +215,7 @@ func ExecuteFunction(
 						}
 					}
 					if !is_table { //Is not a table but we are trying to manage it as a table, error
-						return nil, fmt.Errorf("The type of the variable is not a table 2")
+						return fmt.Errorf("The type of the variable is not a table 2")
 					}
 
 					//Create the type
@@ -198,19 +233,37 @@ func ExecuteFunction(
 
 					//Add the original type to the list of types to add to the type
 					if !Contains(types_list, type_) { //Will be used to unmarshal the json
-						type_to_transpile += "type " + type_ + " struct {\n"
+						type_to_transpile_2 := "type " + type_ + " struct {\n"
 						for col, type_ := range original_type {
-							type_to_transpile += "    " + col + " " + type_ + "\n"
+							type_to_transpile_2 += "    " + col + " " + type_ + "\n"
 						}
-						type_to_transpile += "}\n"
+						type_to_transpile_2 += "}\n"
 
-						types_to_transpile = append(types_to_transpile, type_)
+						types_to_transpile = append(types_to_transpile, type_to_transpile_2)
 						types_list = append(types_list, type_)
 					}
 
-					type_var = type_ + "_" + name
+					if entered_in_extern {
+						for _, ex := range extern {
+							if !Contains(types_list, ex) {
+								//Get the table
+								tb := database.GetTable(ex)
+								add_type := "type " + ex + " struct {\n"
+								for _, cols := range tb.Columns {
+									if !cols.IsArray {
+										add_type += "    " + cols.Name + " " + cols.TypeAsString + "\n"
+									} else {
+										add_type += "    " + cols.Name + " []" + cols.TypeAsString + "\n"
+									}
+								}
+								add_type += "}\n"
 
-					transpiled_script += type_to_transpile + "\n\n"
+								types_to_transpile = append(types_to_transpile, add_type)
+							}
+						}
+					}
+
+					type_var = type_ + "_" + name
 				}
 			} else if len(line_split) == 3 { //second way
 				//Get the type
@@ -240,7 +293,7 @@ func ExecuteFunction(
 						}
 					}
 					if !is_table { //Is not a table but we are trying to manage it as a table, error
-						return nil, fmt.Errorf("The type of the variable is not a table 1")
+						return fmt.Errorf("The type of the variable is not a table 1")
 					}
 
 					//Create the type
@@ -255,14 +308,12 @@ func ExecuteFunction(
 						types_to_transpile = append(types_to_transpile, type_to_transpile)
 						types_list = append(types_list, type_+"_"+name)
 						original_types_list = append(original_types_list, type_)
-
-						transpiled_script += type_to_transpile + "\n"
 					}
 
 					type_var = type_ + "_" + name
 				}
 			} else {
-				return nil, fmt.Errorf("Error in the line")
+				return fmt.Errorf("Error in the line")
 			}
 
 			//Add the variable to the transpiled function
@@ -291,12 +342,14 @@ func ExecuteFunction(
 				//Make the request
 				ip := GetLocalIP()
 				transpiled_function += "resp, err := http.Get(\"http://" + ip + ":8080/api/v1/getAll/" + t_to_get.Name + "\")\n"
+				imports += "\"net/http\"\n"
 				transpiled_function += "if err != nil {\n"
 				transpiled_function += "	return nil, err\n"
 				transpiled_function += "}\n"
 
 				//Get the data
 				transpiled_function += "body, err := ioutil.ReadAll(resp.Body)\n"
+				imports += "\"io/ioutil\"\n"
 				transpiled_function += "if err != nil {\n"
 				transpiled_function += "	return nil, err\n"
 				transpiled_function += "}\n"
@@ -304,6 +357,7 @@ func ExecuteFunction(
 				//Unmarshal the data
 				transpiled_function += "var " + t_to_split + "_data" + " []" + t_to_get.Name + "\n"
 				transpiled_function += "err = json.Unmarshal(body, &" + t_to_split + "_data)\n"
+				imports += "\"encoding/json\"\n"
 				transpiled_function += "if err != nil {\n"
 				transpiled_function += "	return nil, err\n"
 				transpiled_function += "}\n"
@@ -316,7 +370,7 @@ func ExecuteFunction(
 
 				continue
 			} else {
-				return nil, fmt.Errorf("Error in the line [", i, "]")
+				return fmt.Errorf("Error in the line [", i, "]")
 			}
 		}
 
@@ -385,18 +439,8 @@ func ExecuteFunction(
 			}
 			continue
 		}
-
-		//If starts with "return"
-		if strings.HasPrefix(line, "return") {
-			//Remove ;
-			line = strings.Replace(line, ";", "", -1)
-
-			//Split
-			line_split := strings.Split(line, " ")
-
-			transpiled_function += "	" + line_split[0] + " " + line_split[1] + "\n"
-		}
 	}
+	imports += ")\n"
 
 	if we_are_in_a_loop {
 		transpiled_function += "	}\n"
@@ -404,6 +448,9 @@ func ExecuteFunction(
 	}
 
 	transpiled_function += "}\n"
+	transpiled_script += imports
+	transpiled_script += libs
+	transpiled_script += strings.Join(types_to_transpile, "\n")
 	transpiled_script += "func " + function.Name + "() ([]map[string]interface{}, error) {\n" + transpiled_function + "}\n"
 
 	//Main function
@@ -420,7 +467,7 @@ func ExecuteFunction(
 
 	//TODO: GET THE RESULT
 
-	return nil, nil
+	return nil
 }
 
 func ToString(row map[string]interface{}) string {

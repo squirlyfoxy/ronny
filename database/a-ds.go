@@ -296,7 +296,7 @@ func StartADS(db *Database) {
 
 	database = db
 
-	_, err := ExecuteFunction(database.GetTable("Utenti"), database.GetTable("Utenti").Functions[0])
+	err := CompileFunction(database.GetTable("Utenti"), database.GetTable("Utenti").Functions[0])
 	if err != nil {
 		fmt.Println(err)
 	}
