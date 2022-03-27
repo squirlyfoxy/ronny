@@ -1,6 +1,8 @@
 package libs
 
 import (
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,6 +16,15 @@ func NewDate(year int, month int, day int) date {
 	return date{year, month, day}
 }
 
+func ToDate(_d string) date {
+	//DD-MM-YYYY
+	d := strings.Split(_d, "-")
+	ye, _ := strconv.Atoi(d[2])
+	mo, _ := strconv.Atoi(d[1])
+	da, _ := strconv.Atoi(d[0])
+	return NewDate(ye, mo, da)
+}
+
 func CurrentDate() date {
 	y := time.Now().Year()
 	m := time.Now().Month()
@@ -22,16 +33,7 @@ func CurrentDate() date {
 }
 
 func (d date) CalculateAge() int {
-	months := []int{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 	current := CurrentDate()
 
-	if d.Day > current.Day {
-		current.Day += current.Day + months[current.Month-1]
-		current.Month += current.Month - 1
-	}
-	if d.Month > current.Month {
-		current.Month += current.Month + 12
-		current.Year += current.Year - 1
-	}
 	return current.Year - d.Year
 }

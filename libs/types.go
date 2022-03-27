@@ -1,3 +1,3 @@
 package libs
 
-type key string
+type key interface{}
