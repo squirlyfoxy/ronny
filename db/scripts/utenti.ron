@@ -14,6 +14,7 @@
 		{
 			Nome
 			Cognome
+			Data_Nascita
 		} _usrs;
 	
 		loop on * as utente

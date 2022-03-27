@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -100,6 +101,7 @@ func CompileFunction(
 	types_list := []string{}
 	original_types_list := []string{}
 	transpiled_function := ""
+	var ass_var_type map[string]string = make(map[string]string)
 	var modified_tyepes_args map[string][]string = make(map[string][]string)
 
 	transpiled_script := ""
@@ -112,7 +114,7 @@ func CompileFunction(
 	//Read the file ./libs/date.go, remove from that the line "package libs" and add it to the transpiled script
 	content_date_lib, imports_date_lib := ReadLib("./libs/date.go")
 	imports += strings.Join(imports_date_lib, "\n")
-	fmt.Println(imports_date_lib)
+
 	libs := strings.Join(content_date_lib, "\n")
 
 	//Read the file ./libs/types.go, remove from that the line "package libs" and add it to the transpiled script
@@ -120,7 +122,6 @@ func CompileFunction(
 
 	libs += strings.Join(content_types_lib, "\n")
 	libs += "\n"
-	fmt.Println(libs)
 
 	//packages_to_import := []string{} //Packages to import
 	restart_index := 0
@@ -191,15 +192,41 @@ func CompileFunction(
 								//key: ColumnName, value: TypeAsString
 								if Contains(rows_to_select, cols.Name) {
 									if !cols.IsArray {
-										types_to_add_to_type[cols.Name] = cols.TypeAsString
+										a := false
+										if cols.Type == DATE {
+											types_to_add_to_type[cols.Name] = "string"
+											a = true
+										}
+
+										if !a {
+											types_to_add_to_type[cols.Name] = cols.TypeAsString
+										}
 									} else {
-										types_to_add_to_type[cols.Name] = "[]" + cols.TypeAsString
+										a := false
+										if cols.Type == DATE {
+											types_to_add_to_type[cols.Name] = "[]string"
+											a = true
+										}
+
+										if !a {
+											types_to_add_to_type[cols.Name] = "[]" + cols.TypeAsString
+										}
 									}
 								}
 
 								if !cols.IsArray {
+									if cols.Type == DATE {
+										original_type[cols.Name] = "string"
+										continue
+									}
+
 									original_type[cols.Name] = cols.TypeAsString
 								} else {
+									if cols.Type == DATE {
+										original_type[cols.Name] = "[]string"
+										continue
+									}
+
 									original_type[cols.Name] = "[]" + cols.TypeAsString
 								}
 
@@ -251,8 +278,18 @@ func CompileFunction(
 								add_type := "type " + ex + " struct {\n"
 								for _, cols := range tb.Columns {
 									if !cols.IsArray {
+										if cols.Type == DATE {
+											add_type += "    " + cols.Name + " string" + "\n"
+											continue
+										}
+
 										add_type += "    " + cols.Name + " " + cols.TypeAsString + "\n"
 									} else {
+										if cols.Type == DATE {
+											add_type += "    " + cols.Name + " []string" + "\n"
+											continue
+										}
+
 										add_type += "    " + cols.Name + " []" + cols.TypeAsString + "\n"
 									}
 								}
@@ -282,8 +319,18 @@ func CompileFunction(
 							for _, cols := range tb.Columns {
 								//key: ColumnName, value: TypeAsString
 								if !cols.IsArray {
+									if cols.Type == DATE {
+										types_to_add_to_type[cols.Name] = "string"
+										continue
+									}
+
 									types_to_add_to_type[cols.Name] = cols.TypeAsString
 								} else {
+									if cols.Type == DATE {
+										types_to_add_to_type[cols.Name] = "[]string"
+										continue
+									}
+
 									types_to_add_to_type[cols.Name] = "[]" + cols.TypeAsString
 								}
 							}
@@ -334,6 +381,7 @@ func CompileFunction(
 				if t_to_split == "*" {
 					t_to_split = table.Name
 				}
+				ass_var_type[line_split[4]] = t_to_split
 
 				t_to_get := database.GetTable(t_to_split)
 
@@ -342,24 +390,31 @@ func CompileFunction(
 				//Make the request
 				ip := GetLocalIP()
 				transpiled_function += "resp, err := http.Get(\"http://" + ip + ":8080/api/v1/getAll/" + t_to_get.Name + "\")\n"
-				imports += "\"net/http\"\n"
+				if !strings.Contains(imports, "\"net/http\"") {
+					imports += "\"net/http\"\n"
+				}
 				transpiled_function += "if err != nil {\n"
-				transpiled_function += "	return nil, err\n"
+				transpiled_function += "	return \"\", err\n"
 				transpiled_function += "}\n"
 
 				//Get the data
 				transpiled_function += "body, err := ioutil.ReadAll(resp.Body)\n"
-				imports += "\"io/ioutil\"\n"
+				if !strings.Contains(imports, "\"io/ioutil\"") {
+					imports += "\"io/ioutil\"\n"
+				}
 				transpiled_function += "if err != nil {\n"
-				transpiled_function += "	return nil, err\n"
+				transpiled_function += "	return \"\", err\n"
 				transpiled_function += "}\n"
 
 				//Unmarshal the data
 				transpiled_function += "var " + t_to_split + "_data" + " []" + t_to_get.Name + "\n"
-				transpiled_function += "err = json.Unmarshal(body, &" + t_to_split + "_data)\n"
-				imports += "\"encoding/json\"\n"
+				transpiled_function += "data_array := string(body)[12 : len(string(body))-2]\n"
+				transpiled_function += "err = json.Unmarshal([]byte(data_array), &" + t_to_split + "_data)\n"
+				if !strings.Contains(imports, "\"encoding/json\"") {
+					imports += "\"encoding/json\"\n"
+				}
 				transpiled_function += "if err != nil {\n"
-				transpiled_function += "	return nil, err\n"
+				transpiled_function += "	return \"\", err\n"
 				transpiled_function += "}\n"
 
 				//Prepare the loop
@@ -379,7 +434,34 @@ func CompileFunction(
 			//write the if in the transpiled function
 			split_line := strings.Split(line, " ")
 			split_line[3] = AlphanumericOnly(split_line[3])
-			transpiled_function += split_line[0] + " " + split_line[1] + split_line[2] + split_line[3] + " {\n"
+
+			//Split split_line[1] "."
+			split_line_1 := strings.Split(split_line[1], ".")
+			if len(split_line_1) == 3 {
+				//The first should be the name of the variable
+				split_line_1[0] = AlphanumericOnly(split_line_1[0])
+				//Get the type of the variable
+				type_var := ass_var_type[split_line_1[0]]
+				//Get tha table
+				table_to_get := database.GetTable(type_var)
+				//At pos 1 we have the column
+				column_to_get := split_line_1[1]
+
+				//loop throught columns
+				for _, col := range table_to_get.Columns {
+					if col.Name == column_to_get {
+						switch col.Type {
+						case DATE:
+							//We neeto to: ToDate(split_line_1[0].split_line_1[1]).split_line_1[2]
+							transpiled_function += "if ToDate(" + split_line_1[0] + "." + split_line_1[1] + ")." + split_line_1[2] + split_line[2] + split_line[3] + " {\n"
+							break
+						}
+					}
+				}
+			} else {
+				transpiled_function += split_line[0] + " " + split_line[1] + split_line[2] + split_line[3] + " {\n"
+			}
+
 			//We are in an if
 			for j := i + 1; j < len(lines); j++ {
 				line = lines[j]
@@ -437,39 +519,65 @@ func CompileFunction(
 
 				//restart_index = j + 1
 			}
+			transpiled_function += "	}\n"
+			continue
+		}
+
+		//If contains return
+		if strings.Contains(line, "return") {
+			if we_are_in_a_loop {
+				transpiled_function += "	}\n"
+				we_are_in_a_loop = false
+			}
+
+			//Split by " "
+			split_line := strings.Split(line, " ")
+			split_line[1] = AlphanumericOnly(split_line[1])
+
+			//marshal
+			transpiled_function += "	json_data, err := json.Marshal(" + split_line[1] + ")\n"
+			//Check if the encoding/json package is imported
+			if !strings.Contains(imports, "\"encoding/json\"") {
+				imports += "\"encoding/json\"\n"
+			}
+
+			transpiled_function += "	if err != nil {\n"
+			transpiled_function += "		return \"\", err\n"
+			transpiled_function += "	}\n"
+
+			transpiled_function += "	return string(json_data), nil\n"
+
 			continue
 		}
 	}
+	imports += "\"fmt\"\n"
 	imports += ")\n"
 
-	if we_are_in_a_loop {
-		transpiled_function += "	}\n"
-		we_are_in_a_loop = false
-	}
-
-	transpiled_function += "}\n"
 	transpiled_script += imports
 	transpiled_script += libs
 	transpiled_script += strings.Join(types_to_transpile, "\n")
-	transpiled_script += "func " + function.Name + "() ([]map[string]interface{}, error) {\n" + transpiled_function + "}\n"
+	transpiled_script += "func " + function.Name + "() (string, error) {\n" + transpiled_function + "}\n"
 
 	//Main function
 	transpiled_script += "func main() {\n"
-	transpiled_script += "	" + function.Name + "()\n"
+	transpiled_script += "	res, err := " + function.Name + "()\n"
+	transpiled_script += "	if err != nil {\n"
+	transpiled_script += "		panic(err)\n"
+	transpiled_script += "	}\n"
+	transpiled_script += "	fmt.Println(res)\n"
 	transpiled_script += "}\n"
 
 	//Save the transpiled function
 	ioutil.WriteFile("./transpiled_functions/"+function.Name+".go", []byte(transpiled_script), 0644)
 
-	//TODO: COMPILE THE CREATED FILE
+	//Compile the created file in ./db/bin
+	cmd := exec.Command("go", "build", "-o", "./db/bin/"+function.Name, "./transpiled_functions/"+function.Name+".go")
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
 
-	//TODO: RUN THE COMPILED FILE
-
-	//TODO: GET THE RESULT
+	fmt.Println("	-> Transpiled function: " + function.Name + " compiled successfully in ./db/bin")
 
 	return nil
-}
-
-func ToString(row map[string]interface{}) string {
-	return fmt.Sprintf("%v", row)
 }

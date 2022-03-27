@@ -1,6 +1,7 @@
 package database
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -274,7 +275,7 @@ func GetAllDataRoute(c *gin.Context) {
 	//Get the table
 	for _, table := range database.Tables {
 		if table.Name == tableName { //Check if the table exists
-			data := GetAllData(database, table)
+			data := GetDataFromATable(*database, table, -1)
 
 			c.JSON(200, gin.H{
 				"data": data,
@@ -290,16 +291,77 @@ func GetAllDataRoute(c *gin.Context) {
 	})
 }
 
+//TODO: DATA TO PASS TO THE FUNCTION
+func ExecuteRoute(c *gin.Context) {
+	//Set json
+	c.Header("Content-Type", "application/json")
+
+	//Get function name and table name
+	functionName := c.Param("functionName")
+	tableName := c.Param("tableName")
+
+	entered := false
+	for _, table := range database.Tables {
+		if table.Name == tableName { //Check if the table exists
+			entered_function := false
+			for _, function := range table.Functions {
+				if function.Name == functionName {
+					entered_function = true
+					res, err := function.Exec()
+					if err != nil {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"message": "error",
+						})
+						fmt.Println(err)
+						return
+					}
+					//Res to an array of maps json
+					var res_array []map[string]interface{}
+					json.Unmarshal([]byte(res), &res_array)
+					c.JSON(200, gin.H{
+						"data": res_array,
+					})
+
+					return
+				}
+			}
+			if !entered_function {
+				c.JSON(http.StatusNotFound, gin.H{
+					"message": "function not found",
+				})
+				return
+			}
+
+			entered = true
+		}
+	}
+
+	if !entered {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "table not found",
+		})
+		return
+	}
+}
+
 func StartADS(db *Database) {
 	//Gin server
 	r := gin.Default()
 
 	database = db
 
-	err := CompileFunction(database.GetTable("Utenti"), database.GetTable("Utenti").Functions[0])
-	if err != nil {
-		fmt.Println(err)
+	//Loop through the tables
+	fmt.Println("Starting functions compilation stage")
+	for _, table := range database.Tables {
+		//Loop through the functions
+		for _, function := range table.Functions {
+			err := CompileFunction(table, function)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
+	fmt.Println("Functions compilation stage finished")
 
 	//Routes
 	r.GET("/api/v1/", func(c *gin.Context) {
@@ -325,6 +387,8 @@ func StartADS(db *Database) {
 	//POST:
 	//		data of the table, [key-value]
 	r.POST("/api/v1/insert/:tableName", AddRoute)
+	///api/v1/execute/[tableName]/[functionName]
+	r.GET("/api/v1/execute/:tableName/:functionName", ExecuteRoute)
 
 	//Start server
 	r.Run(db.Config.Host + ":" + fmt.Sprintf("%d", db.Config.Port))

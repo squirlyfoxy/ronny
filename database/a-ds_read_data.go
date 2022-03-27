@@ -70,15 +70,24 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 		primary_key_positions_buffer[table.Name] = pr_key_pos
 	}
 
-	for _, v := range tableData.Data { //For each row
-		if v[pr_key_pos] == strconv.Itoa(key) { //If the primary key is the same as the key we are looking for
+	for ix, v := range tableData.Data { //For each row
+		if key == -1 {
 			entered = true
-
+			var dta map[string]interface{} = make(map[string]interface{})
 			for i, v2 := range v {
-				data[table.Columns[i].Name] = v2
+				dta[table.Columns[i].Name] = v2
 			}
+			data[strconv.Itoa(ix)] = dta
+		} else {
+			if v[pr_key_pos] == strconv.Itoa(key) { //If the primary key is the same as the key we are looking for
+				entered = true
 
-			break
+				for i, v2 := range v {
+					data[table.Columns[i].Name] = v2
+				}
+
+				break
+			}
 		}
 	}
 	if !entered {
@@ -87,66 +96,130 @@ func GetDataFromATable(database Database, table Table, key int) map[string]inter
 		}
 	}
 
-	for key, currentat := range data {
-		var pos int = 0
-		for _, col := range table.Columns {
-			if col.Name == key {
-				break
+	if key != -1 {
+		for _key, currentat := range data {
+			var pos int = 0
+			for _, col := range table.Columns {
+				if col.Name == _key {
+					break
+				}
+				pos++
 			}
-			pos++
-		}
-		column := table.Columns[pos]
+			column := table.Columns[pos]
 
-		if currentat == nil {
-			ret[column.Name] = nil
-			continue
-		}
+			if currentat == nil {
+				ret[column.Name] = nil
+				continue
+			}
 
-		//IF the column is a foreign key, get the data from the other table
-		if column.IsExtern {
-			//N:N
-			if column.IsArray {
-				var array []interface{} = make([]interface{}, 0)
+			//IF the column is a foreign key, get the data from the other table
+			if column.IsExtern {
+				//N:N
+				if column.IsArray {
+					var array []interface{} = make([]interface{}, 0)
 
-				for _, v := range currentat.([]interface{}) {
-					v_int, err := strconv.Atoi(v.(string))
+					for _, v := range currentat.([]interface{}) {
+						v_int, err := strconv.Atoi(v.(string))
+						if err != nil {
+							ret[column.Name] = nil
+							continue
+						}
+
+						array = append(array, GetDataFromATable(database, database.GetTable(column.TypeAsString), v_int))
+					}
+					ret[column.Name] = array
+				} else {
+					//1:N
+					currentat_int, err := strconv.Atoi(currentat.(string))
 					if err != nil {
 						ret[column.Name] = nil
 						continue
 					}
+					ret[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), currentat_int)
+				}
 
-					array = append(array, GetDataFromATable(database, database.GetTable(column.TypeAsString), v_int))
-				}
-				ret[column.Name] = array
-			} else {
-				//1:N
-				currentat_int, err := strconv.Atoi(currentat.(string))
-				if err != nil {
-					ret[column.Name] = nil
-					continue
-				}
-				ret[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), currentat_int)
+				continue
 			}
 
-			continue
+			if column.Type == INT || (column.Type == KEY && column.Rule == AUTOINCREMENT) {
+				currentat_int, _ := strconv.Atoi(currentat.(string))
+				ret[column.Name] = currentat_int
+
+				continue
+			} else if column.Type == FLOAT {
+				currentat_float, _ := strconv.ParseFloat(currentat.(string), 64)
+				ret[column.Name] = currentat_float
+
+				continue
+			}
+
+			ret[column.Name] = currentat
 		}
 
-		if column.Type == INT || (column.Type == KEY && column.Rule == AUTOINCREMENT) {
-			currentat_int, _ := strconv.Atoi(currentat.(string))
-			ret[column.Name] = currentat_int
+		return ret
+	} else {
+		//Return an array of interfaces
+		var array []interface{} = make([]interface{}, 0)
+		for _, v := range data {
+			var dta map[string]interface{} = make(map[string]interface{})
+			for k, val := range v.(map[string]interface{}) {
+				var pos int = 0
+				for _, col := range table.Columns {
+					if col.Name == k {
+						break
+					}
+					pos++
+				}
+				column := table.Columns[pos]
 
-			continue
-		} else if column.Type == FLOAT {
-			currentat_float, _ := strconv.ParseFloat(currentat.(string), 64)
-			ret[column.Name] = currentat_float
+				if column.IsExtern {
+					//N:N
+					if column.IsArray {
+						var array []interface{} = make([]interface{}, 0)
 
-			continue
+						for _, v := range val.([]interface{}) {
+							v_int, err := strconv.Atoi(v.(string))
+							if err != nil {
+								dta[column.Name] = nil
+								continue
+							}
+
+							array = append(array, GetDataFromATable(database, database.GetTable(column.TypeAsString), v_int))
+						}
+						dta[column.Name] = array
+					} else {
+						//1:N
+						val_int, err := strconv.Atoi(val.(string))
+						if err != nil {
+							dta[column.Name] = nil
+							continue
+						}
+						dta[column.Name] = GetDataFromATable(database, database.GetTable(column.TypeAsString), val_int)
+					}
+
+					continue
+				}
+
+				if column.Type == INT || (column.Type == KEY && column.Rule == AUTOINCREMENT) {
+					currentat_int, _ := strconv.Atoi(val.(string))
+					dta[column.Name] = currentat_int
+
+					continue
+				} else if column.Type == FLOAT {
+					currentat_float, _ := strconv.ParseFloat(val.(string), 64)
+					dta[column.Name] = currentat_float
+
+					continue
+				}
+
+				dta[column.Name] = val
+			}
+			array = append(array, dta)
 		}
 
-		ret[column.Name] = currentat
+		ret[""] = array
+		return ret
 	}
-
-	return ret
 }
 
 func GetAllData(
