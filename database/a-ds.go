@@ -261,12 +261,14 @@ func GetAllDataRoute(c *gin.Context) {
 	//Get the server local IP
 	localIP := GetLocalIP()
 
-	if c.ClientIP() != localIP {
-		//404
-		c.JSON(http.StatusNotFound, gin.H{
-			"message": "not found",
-		})
-		return
+	if database.Config.Host != "localhost" && database.Config.Host != "127.0.0.1" {
+		if c.ClientIP() != localIP {
+			//404
+			c.JSON(http.StatusNotFound, gin.H{
+				"message": "not found",
+			})
+			return
+		}
 	}
 
 	//Get the table name

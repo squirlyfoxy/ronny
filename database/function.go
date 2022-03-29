@@ -3,6 +3,7 @@ package database
 import (
 	"bytes"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -14,7 +15,12 @@ type Function struct {
 
 func (f *Function) Exec() (string, error) {
 	//Execute the function
-	cmd := exec.Command("./db/bin/" + f.Name)
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("./db/bin/" + f.Name + ".exe")
+	} else {
+		cmd = exec.Command("./db/bin/" + f.Name)
+	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()

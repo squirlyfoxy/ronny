@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -100,6 +101,7 @@ func CompileFunction(
 	types_to_transpile := []string{}
 	types_list := []string{}
 	original_types_list := []string{}
+	names_to_return_all := []string{}
 	transpiled_function := ""
 	var ass_var_type map[string]string = make(map[string]string)
 	var modified_tyepes_args map[string][]string = make(map[string][]string)
@@ -309,10 +311,14 @@ func CompileFunction(
 				name = line_split[2]
 				name = strings.Replace(name, ";", "", -1)
 
+				fmt.Println("type_: " + type_ + " name: " + name)
+
 				//Check if the type is a table
 				is_table := false
+				entered_in_extern := false
+				var extern []string
 
-				if !Contains(types_list, type_+"_"+name+"_all") {
+				if !Contains(types_list, type_) {
 					var types_to_add_to_type map[string]string = map[string]string{}
 					for _, tb := range database.Tables {
 						if tb.Name == type_ {
@@ -333,6 +339,11 @@ func CompileFunction(
 
 									types_to_add_to_type[cols.Name] = "[]" + cols.TypeAsString
 								}
+
+								if cols.IsExtern {
+									entered_in_extern = true
+									extern = append(extern, cols.TypeAsString)
+								}
 							}
 
 							is_table = true
@@ -343,21 +354,48 @@ func CompileFunction(
 						return fmt.Errorf("The type of the variable is not a table 1")
 					}
 
-					//Create the type
-					if !Contains(types_list, type_+"_"+name) {
-						type_to_transpile = "type " + type_ + "_" + name + " struct {\n"
-						for col, type_ := range types_to_add_to_type {
-							type_to_transpile += "    " + col + " " + type_ + "\n"
-						}
-						type_to_transpile += "}\n"
+					if entered_in_extern {
+						for _, ex := range extern {
+							if !Contains(types_list, ex) {
+								//Get the table
+								tb := database.GetTable(ex)
+								add_type := "type " + ex + " struct {\n"
+								for _, cols := range tb.Columns {
+									if !cols.IsArray {
+										if cols.Type == DATE {
+											add_type += "    " + cols.Name + " string" + "\n"
+											continue
+										}
 
-						//Add the type to the list of types to transpile
-						types_to_transpile = append(types_to_transpile, type_to_transpile)
-						types_list = append(types_list, type_+"_"+name)
-						original_types_list = append(original_types_list, type_)
+										add_type += "    " + cols.Name + " " + cols.TypeAsString + "\n"
+									} else {
+										if cols.Type == DATE {
+											add_type += "    " + cols.Name + " []string" + "\n"
+											continue
+										}
+
+										add_type += "    " + cols.Name + " []" + cols.TypeAsString + "\n"
+									}
+								}
+								add_type += "}\n"
+
+								types_to_transpile = append(types_to_transpile, add_type)
+							}
+						}
 					}
 
-					type_var = type_ + "_" + name
+					type_to_transpile = "type " + type_ + " struct {\n"
+					for col, type_ := range types_to_add_to_type {
+						type_to_transpile += "    " + col + " " + type_ + "\n"
+					}
+					type_to_transpile += "}\n"
+
+					//Add the type to the list of types to transpile
+					types_to_transpile = append(types_to_transpile, type_to_transpile)
+					types_list = append(types_list, type_)
+					original_types_list = append(original_types_list, type_)
+					names_to_return_all = append(names_to_return_all, name)
+					type_var = type_
 				}
 			} else {
 				return fmt.Errorf("Error in the line")
@@ -486,7 +524,7 @@ func CompileFunction(
 						line_split[1] = AlphanumericOnly(line_split[1])
 
 						//Append the value to the variable
-						if Contains(original_types_list, line_split[0]) {
+						if Contains(names_to_return_all, line_split[0]) {
 							transpiled_function += "	" + line_split[0] + " = append(" + line_split[0] + ", " + line_split[1] + ")\n"
 						} else {
 							//We need to append the value to the variable but the variable type is the one that has been modified (differs in rows)
@@ -571,7 +609,12 @@ func CompileFunction(
 	ioutil.WriteFile("./transpiled_functions/"+function.Name+".go", []byte(transpiled_script), 0644)
 
 	//Compile the created file in ./db/bin
-	cmd := exec.Command("go", "build", "-o", "./db/bin/"+function.Name, "./transpiled_functions/"+function.Name+".go")
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("go", "build", "-o", "./db/bin/"+function.Name+".exe", "./transpiled_functions/"+function.Name+".go")
+	} else {
+		cmd = exec.Command("go", "build", "-o", "./db/bin/"+function.Name, "./transpiled_functions/"+function.Name+".go")
+	}
 	err := cmd.Run()
 	if err != nil {
 		panic(err)

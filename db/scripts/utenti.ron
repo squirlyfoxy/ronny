@@ -10,12 +10,7 @@
 	
 	@function (TakeTuttiMaggiorenni)
 	{
-		@var (Utenti)
-		{
-			Nome
-			Cognome
-			Data_Nascita
-		} _usrs;
+		@var (Utenti) _usrs;
 	
 		loop on * as utente
 		{
