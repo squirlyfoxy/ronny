@@ -1,0 +1,16 @@
+@type Tipe
+{
+	ID	key		AUTOINCREMENT
+	Nome	string
+	Cognome	string
+	Sesso	int
+	
+	@rule
+	{
+		@on_type
+		{
+			CAN_GLOBALLY_TAKE
+			CAN_ADD
+		} Tipe;
+	};
+}

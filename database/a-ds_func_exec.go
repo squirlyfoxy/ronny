@@ -1,25 +1,34 @@
 package database
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
 )
 
-func ReadLib(file string) ([]string, []string) {
+func ReadLib(n string) ([]string, []string) {
 	//Will return the contents and the imports
-	contents, err := ioutil.ReadFile(file)
+	file, err := os.Open(n)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
+	defer file.Close()
 
-	lines := strings.Split(string(contents), "\n")
+	scanner := bufio.NewScanner(file)
+	var imports []string
+	var contents []string
 
-	lines = Remove(lines, "package libs")
-	imports := make([]string, 0)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line != "package libs" {
+			contents = append(contents, line)
+		}
+	}
 
 	//TODO:
 
@@ -49,7 +58,7 @@ func ReadLib(file string) ([]string, []string) {
 		}
 	}*/
 
-	return lines, imports
+	return contents, imports
 }
 
 //TODO: Needs to be refactored (the code is too long)
@@ -309,7 +318,7 @@ func CompileFunction(
 				type_ := line_split[1]
 				type_ = AlphanumericOnly(type_)
 				name = line_split[2]
-				name = strings.Replace(name, ";", "", -1)
+				name = AlphanumericOnly(name)
 
 				fmt.Println("type_: " + type_ + " name: " + name)
 
@@ -426,7 +435,7 @@ func CompileFunction(
 				//To get the data we will make a request to the api (/api/v1/getAll/:tableName)
 
 				//Make the request
-				ip := GetLocalIP()
+				ip := database.Config.Host
 				transpiled_function += "resp, err := http.Get(\"http://" + ip + ":8080/api/v1/getAll/" + t_to_get.Name + "\")\n"
 				if !strings.Contains(imports, "\"net/http\"") {
 					imports += "\"net/http\"\n"
