@@ -34,7 +34,7 @@ func CurrentDate() date {
 
 func (d date) CalculateAge() int {
 	current := CurrentDate()
-	int age = current.Year - d.Year
+	var age = current.Year - d.Year
 	if current.Month > d.Month {
 		age++
 	}
